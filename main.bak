@@ -1,0 +1,262 @@
+
+const pacmanIMG = document.getElementById("pacman");
+
+const canvas = document.getElementById("canvas");
+const screen = canvas.getContext("2d");
+
+canvas.width = windowSize.width;
+canvas.height = windowSize.height;
+
+const pacman = new Pacman(
+    screen,
+    pacmanIMG,
+    pacmanPosition.x,
+    pacmanPosition.y,
+    blocksize,
+    blocksize,
+    DIRECTION_RIGHT,
+    speed
+);
+
+function draw() {
+    screen.fillStyle = "black";
+    screen.clearRect(0, 0, canvas.width, canvas.height);
+    screen.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let u = 0; u < map.length; u++) {
+        for (let v = 0; v < map[u].length; v++) {
+            if (map[u][v] == 1) {
+                screen.fillStyle = "red";
+                screen.fillRect(v * blocksize, u * blocksize, blocksize, blocksize);
+                if (v > 0) {
+                    screen.fillStyle = "black";
+                    if (map[u][v - 1] === 1) {
+                        screen.fillRect(v * blocksize, u * blocksize + spacing, wallsize + spacing, wallsize);
+                    }
+                    if (map[u][v-1] === 0){
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize, wallsize)
+                    }
+                }
+                if (v < map[u].length - 1) {
+                    screen.fillStyle = "black";
+                    if (map[u][v + 1] === 1) {
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize + spacing, wallsize);
+                    }
+                    if (map[u][v + 1] === 0){
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize, wallsize)
+                    }
+                }
+                if (u > 0) {
+                    screen.fillStyle = "black";
+                    if (map[u - 1][v] === 1) {
+                        screen.fillRect(v * blocksize + spacing, u * blocksize, wallsize, wallsize + spacing);
+                    }
+                    if (map[u - 1][v] === 0){
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize, wallsize)
+                    }
+                }
+                if (u < map.length - 1) {
+                    screen.fillStyle = "black";
+                    if (map[u + 1][v] === 1) {
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize, wallsize + spacing);
+                    }
+                    if (map[u + 1][v] === 0){
+                        screen.fillRect(v * blocksize + spacing, u * blocksize + spacing, wallsize, wallsize)
+                    }
+                }
+            }
+        }
+    }    
+}
+
+function drawLines() {
+    screen.fillStyle = "black";
+    screen.clearRect(0, 0, canvas.width, canvas.height);
+    screen.fillRect(0, 0, canvas.width, canvas.height);
+
+    screen.beginPath();
+    screen.strokeStyle = wallColor;
+    screen.lineWidth = lineWidth;
+
+    for (let v=0; v < map.length; v++) {
+        for (let u=0; u < map[v].length; u++) {
+            let x = u * blocksize,
+                y = v * blocksize;
+            
+            let pivot = map[v][u],
+                A = map[v - 1] ? map[v - 1][u - 1] ?? 0 : 0,
+                B = map[v - 1] ? map[v - 1][u] ?? 0 : 0,
+                C = map[v - 1] ? map[v - 1][u + 1] ?? 0 : 0,
+                D = map[v][u - 1] ?? 0,
+                E = map[v][u + 1] ?? 0,
+                F = map[v + 1] ? map[v + 1][u - 1] ?? 0 : 0,
+                G = map[v + 1] ? map[v + 1][u] ?? 0 : 0,
+                H = map[v + 1] ? map[v + 1][u + 1] ?? 0 : 0;
+            
+            if (pivot === 1) {
+                
+                if (B === 1) {
+
+                    if (D !== 1) {
+                        if (A === 1) {
+                            screen.moveTo(x, y);
+                            screen.lineTo(x + spacing, y + spacing);
+                            screen.lineTo(x + spacing, y + wallsize);
+                        } else {
+                            screen.moveTo(x + spacing, y);
+                            screen.lineTo(x + spacing, y + wallsize);
+                        }
+                    }
+
+                    if (E !== 1) {
+                        if (C === 1) {
+                            screen.moveTo(x + blocksize, y);
+                            screen.lineTo(x + spacing + wallsize, y + spacing);
+                            screen.lineTo(x + spacing + wallsize, y + wallsize);
+                        } else {
+                            screen.moveTo(x + spacing + wallsize, y);
+                            screen.lineTo(x + spacing + wallsize, y + wallsize);
+                        }
+                    }
+                
+                }
+                
+                if (B !== 1) {
+
+                    if (D === 1) {
+                        if (A === 1) {
+                            screen.moveTo(x, y);
+                            screen.lineTo(x + spacing, y + spacing);
+                            screen.lineTo(x + wallsize, y + spacing);
+                        } else {
+                            screen.moveTo(x, y + spacing);
+                            screen.lineTo(x + wallsize, y + spacing);
+                        }
+
+                    } else {
+                        screen.moveTo(x + spacing, y + wallsize);
+                        screen.lineTo(x + spacing, y + spacing * 2);
+                        screen.lineTo(x + spacing * 2, y + spacing);
+                        screen.lineTo(x + wallsize, y + spacing);
+                    }
+
+                    if (E == 1) {
+                        if (C === 1) {
+                            screen.moveTo(x + blocksize, y);
+                            screen.lineTo(x + spacing + wallsize, y + spacing);
+                            screen.lineTo(x + wallsize, y + spacing);
+                        } else {
+                            screen.moveTo(x + wallsize, y + spacing);
+                            screen.lineTo(x + blocksize, y + spacing);
+                        }
+                    } else {
+                        screen.moveTo(x + wallsize, y + spacing);
+                        screen.lineTo(x + spacing + wallsize, y + spacing * 2);
+                        screen.lineTo(x + spacing + wallsize, y + wallsize);
+                    }
+                }
+
+                if (G === 1) {
+
+                    if (D !== 1) {
+                        if (F === 1) {
+                            screen.moveTo(x, y + blocksize);
+                            screen.lineTo(x + spacing, y + spacing + wallsize);
+                            screen.lineTo(x + spacing, y + wallsize);
+                        } else {
+                            screen.moveTo(x + spacing, y + blocksize);
+                            screen.lineTo(x + spacing, y + wallsize);
+                        }
+                    }
+
+                    if (E !== 1) {
+                        if (H === 1) {
+                            screen.moveTo(x + blocksize, y + blocksize);
+                            screen.lineTo(x + spacing + wallsize, y + spacing + wallsize);
+                            screen.lineTo(x + spacing + wallsize, y + spacing * 2);
+                        } else {
+                            screen.moveTo(x + spacing + wallsize, y + blocksize);
+                            screen.lineTo(x + spacing + wallsize, y + spacing * 2);
+                        }
+                    }
+                
+                }
+                
+                if (G !== 1) {
+
+                    if (D === 1) {
+                        if (F === 1) {
+                            screen.moveTo(x, y + blocksize);
+                            screen.lineTo(x + spacing, y + spacing + wallsize);
+                            screen.lineTo(x + wallsize, y + spacing + wallsize);
+                        } else {
+                            screen.moveTo(x, y + spacing + wallsize);
+                            screen.lineTo(x + wallsize, y + spacing + wallsize);
+                        }
+                    } else {
+                        screen.moveTo(x + spacing, y + wallsize);
+                        screen.lineTo(x + spacing * 2, y + spacing + wallsize);
+                        screen.lineTo(x + wallsize, y + spacing + wallsize);
+                    }
+
+                    if (E === 1) {
+                        if (H === 1) {
+                            screen.moveTo(x + blocksize, y + blocksize);
+                            screen.lineTo(x + spacing + wallsize, y + spacing + wallsize);
+                            screen.lineTo(x + wallsize, y + spacing + wallsize);
+                        } else {
+                            screen.moveTo(x + blocksize, y + spacing + wallsize);
+                            screen.lineTo(x + wallsize, y + spacing + wallsize);
+                        }
+                    } else {
+                        screen.moveTo(x + spacing + wallsize, y + wallsize);
+                        screen.lineTo(x + wallsize, y + spacing + wallsize);
+                    }
+                    
+                }
+
+            }
+
+            if (pivot === 2) {
+
+                screen.fillStyle = foodColor;
+                screen.fillRect(x + parseInt((blocksize - foodsize) / 2), y + parseInt((blocksize - foodsize) / 2), foodsize, foodsize);
+                
+            }
+
+            if (pivot === 3) {
+                screen.fillStyle = foodColor;
+                screen.fillRect(x + parseInt((blocksize - cherrysize) / 2), y + parseInt((blocksize - cherrysize) / 2), cherrysize, cherrysize)
+            }
+        }
+    }
+    
+    screen.stroke();
+
+}
+
+function runtime() {
+    drawLines();
+        
+    pacman.runtime();
+    pacman.draw();
+}
+
+window.addEventListener("keydown", (event) => {
+    let keycode = event.code;
+
+    if (["KeyA", "ArrowLeft"].includes(keycode))
+        pacman.changeDirection(DIRECTION_LEFT);
+
+    if (["KeyD", "ArrowRight"].includes(keycode))
+        pacman.changeDirection(DIRECTION_RIGHT);
+
+    if (["KeyW", "ArrowUp"].includes(keycode))
+        pacman.changeDirection(DIRECTION_UP);
+
+    if (["KeyS", "ArrowDown"].includes(keycode))
+        pacman.changeDirection(DIRECTION_DOWN);
+
+});
+
+setInterval(runtime, framerate);
