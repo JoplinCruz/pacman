@@ -58,9 +58,9 @@ class Pacman {
         this.turnDirection();
         this.forward();
         if (this.collision()) this.backward();
+        this.ghostCollision();
         this.eat();
         this.checkDump();
-        this.ghostCollision();
     }
 
     collision(row, column, collider) {
@@ -186,7 +186,7 @@ class Pacman {
             let [pacmanROW, pacmanCOLUMN] = this.getCoordinates();
             let [ghostROW, ghostCOLUMN] = this.getCoordinates(ghost.position);
             
-            if (!pacmanPOWER.ON) {
+            if (!pacmanPOWER.ON && !ghost.injured.HURT) {
                 if (this.floor(pacmanROW) === this.ceil(ghostROW) &&
                     this.floor(pacmanCOLUMN) === this.ceil(ghostCOLUMN) ||
                     this.ceil(pacmanROW) === this.floor(ghostROW) &&

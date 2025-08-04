@@ -5,6 +5,8 @@ class Grid{
         this.canvas = canvas;
         this.screen = context;
         this.grid = grid;
+        this.width = this.grid[0].length;
+        this.height = this.grid.length;
     }
 
     draw() {

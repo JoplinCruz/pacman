@@ -43,9 +43,14 @@ const blocksize = 20,
     wallsize = blocksize - (spacing * 2),
     fps = 24,
     framerate = 1000 / fps,
-    speed = parseInt(blocksize / 4),
+    pacmanSpeed = parseInt(blocksize / 4),
     ghostSpeed = parseInt(blocksize / 5),
     ghostInjuredSpeed = parseInt(blocksize / 2);
+
+const gridSize = {
+    width: grid[0].length,
+    height: grid.length,
+}
 
 const windowSize = {
     width: grid[0].length * blocksize,
@@ -100,6 +105,13 @@ const ghostCOLOR = {
     YELLOW: "yellow",
 };
 
+const quarter = {
+    PINK: 0,
+    RED: 1,
+    YELLOW: 2,
+    CYAN: 3,
+}
+
 const ghostsCONFIG = [
     {
         imageHealth: null,
@@ -114,7 +126,12 @@ const ghostsCONFIG = [
             {x: 26 * blocksize, y: 4 * blocksize},
             {x: 22 * blocksize, y: 5 * blocksize},
         ],
-        injuredTarget: { x: 13 * blocksize, y: 14 * blocksize },
+        injured: {
+            HURT: false,
+            SAFE: true,
+            HOME: { x: 13 * blocksize, y: 14 * blocksize },
+            SPEED: parseInt(blocksize / 2),
+        },
         radarRadius: 200,
     },
     {
@@ -130,7 +147,12 @@ const ghostsCONFIG = [
             {x: 26 * blocksize, y: 29 * blocksize},
             {x: 15 * blocksize, y: 26 * blocksize},
         ],
-        injuredTarget: { x: 11 * blocksize, y: 14 * blocksize },
+        injured: {
+            HURT: false,
+            SAFE: true,
+            HOME: { x: 11 * blocksize, y: 14 * blocksize },
+            SPEED: parseInt(blocksize / 2),
+        },
         radarRadius: 200,
     },
     {
@@ -146,7 +168,12 @@ const ghostsCONFIG = [
             {x: 1 * blocksize, y: 4 * blocksize},
             {x: 5 * blocksize, y: 5 * blocksize},
         ],
-        injuredTarget: { x: 13 * blocksize, y: 14 * blocksize },
+        injured: {
+            HURT: false,
+            SAFE: true,
+            HOME: { x: 13 * blocksize, y: 14 * blocksize },
+            SPEED: parseInt(blocksize / 2),
+        },
         radarRadius: 200,
     },
     {
@@ -162,7 +189,12 @@ const ghostsCONFIG = [
             {x: 1 * blocksize, y: 29 * blocksize},
             {x: 12 * blocksize, y: 26 * blocksize},
         ],
-        injuredTarget: { x: 15 * blocksize, y: 14 * blocksize },
+        injured: {
+            HURT: false,
+            SAFE: true,
+            HOME: { x: 15 * blocksize, y: 14 * blocksize },
+            SPEED: parseInt(blocksize / 2),
+        },
         radarRadius: 200,
     },
 ];

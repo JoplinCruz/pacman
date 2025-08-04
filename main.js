@@ -33,7 +33,7 @@ const pacman = new Pacman(
     blocksize,
     blocksize,
     DIRECTION_RIGHT,
-    speed
+    pacmanSpeed
 );
 
 const ghosts = [];
@@ -47,7 +47,7 @@ for (let i = 0; i < ghostsIMG.length; i++){
         ghostsCONFIG[i].scale,
         ghostSpeed,
         ghostsCONFIG[i].idleRoute,
-        ghostsCONFIG[i].injuredTarget,
+        ghostsCONFIG[i].injured,
         ghostsCONFIG[i].radarRadius,
         ghostsCONFIG[i].color
     );

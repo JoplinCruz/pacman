@@ -1,6 +1,6 @@
 
 class Ghost{
-    constructor(context, imageHealth, imageRetreat, imageInjured, position, direction, width, height, scale, speed, idleRoute, injuredTarget, radarRadius, color) {
+    constructor(context, imageHealth, imageRetreat, imageInjured, position, direction, width, height, scale, speed, idleRoute, injured, radarRadius, color) {
         this.screen = context;
         this.imageHealth = imageHealth;
         this.imageRetreat = imageRetreat;
@@ -29,17 +29,22 @@ class Ghost{
         this.evadeTargets = [
             {x: 1 * blocksize, y: 1 * blocksize},
             {x: 26 * blocksize, y: 1 * blocksize},
-            {x: 26 * blocksize, y: 29 * blocksize},
             {x: 1 * blocksize, y: 29 * blocksize},
+            {x: 26 * blocksize, y: 29 * blocksize},
         ];
         this.idleRoute = idleRoute;
         this.idleIndex = 0;
         this.idleLoop = false;
-        this.injured = false;
-        this.injuredTarget = injuredTarget;
+        this.injured = injured;
+        // this.injured = {
+        //     HURT: false,
+        //     SAFE: true,
+        //     HOME: injuredTarget,
+        // }
         this.path = [];
         this.target = this.idle[this.idleIndex];
         this.radaRadius = radarRadius;
+        this.refs = false;
         this.defaults();
     }
 
@@ -74,7 +79,8 @@ class Ghost{
 
         if (this.collision(pacmanPosition)) {
             if (pacmanPOWER.ON) {
-                this.injured = true;
+                this.injured.HURT = true;
+                this.injured.SAFE = false;
             }
             
         }
@@ -137,7 +143,7 @@ class Ghost{
 
     changeDirection(target) {
         
-        this.speed = this.injured ? ghostInjuredSpeed : ghostSpeed;
+        this.speed = this.injured.HURT ? this.injured.SPEED : ghostSpeed;
 
         let [row, column] = this.getCoordinates();
         let [nextROW, nextCOLUMN] = this.calcPATH(target);
@@ -160,8 +166,8 @@ class Ghost{
         let targetCOLUMN = target.x / blocksize;
 
         if (collider) {
-            if (grid[this.floor(row)][this.floor(column)] === collider ||
-                grid[this.ceil(row)][this.ceil(column)] === collider)
+            if (gameboard.grid[this.floor(row)][this.floor(column)] === collider ||
+                gameboard.grid[this.ceil(row)][this.ceil(column)] === collider)
                 return true;
         } else {
             if (this.floor(row) === this.ceil(targetROW) && this.ceil(column) === this.floor(targetCOLUMN) ||
@@ -175,23 +181,31 @@ class Ghost{
     checkStatus() {
 
         if (pacmanPOWER.ON) {
-            this.status = this.action.RETREAT;
+            if (this.radar(pacmanPosition)) {
+                this.status = this.action.RETREAT;
+            } else {
+                this.status = this.action.IDLE;
+            }
             this.image = this.imageRetreat;
         } else if (!pacmanPOWER.ON) {
             if (this.radar(pacmanPosition)) {
                 this.status = this.action.ATTACK;
                 this.image = this.imageHealth;
             } else {
-            this.status = this.action.IDLE;
-            this.image = this.imageHealth;
+                this.status = this.action.IDLE;
+                this.image = this.imageHealth;
             }
+            if (!this.injured.SAFE) this.injured.SAFE = true;
         }
 
-        if (this.injured) {
+        if (!this.injured.SAFE || this.injured.HURT) {
+            if (this.injured.HURT) {
+                this.image = this.imageInjured;
+            } else {
+                this.image = this.imageHealth;
+            }
             this.status = this.action.RECOVERY;
-            this.image = this.imageInjured;
-            // this.speed = ghostInjuredSpeed;
-        };
+        }
     }
     
     checkPath() {
@@ -243,13 +257,8 @@ class Ghost{
     }
 
     retreat() {
-
-        this.calcDELTA(pacmanPosition);
-        if (this.delta.x >= 0) {
-            this.target = this.delta.y >= 0 ? this.evadeTargets[0] : this.evadeTargets[3];
-        } else {
-            this.target = this.delta.y > 0 ? this.evadeTargets[1] : this.evadeTargets[2];
-        }
+        
+        this.target = this.calcRETREAT(pacmanPosition);
 
         if (this.checkPath())
             this.changeDirection(this.target);
@@ -257,12 +266,10 @@ class Ghost{
     
     recovery() {
 
-        if (this.injured) {
-            this.target = this.injuredTarget;
-            if (this.collision(this.injuredTarget)) {
-                this.injured = false;
-            }
-        }
+        this.target = this.injured.HOME;
+
+        if (this.collision(this.injured.HOME))
+            this.injured.HURT = false;
         
         if (this.checkPath()) {
             this.changeDirection(this.target);
@@ -280,19 +287,94 @@ class Ghost{
         let unfilteredNeighbors = (row + column) % 2 === 0 ? [S, N, W, E] : [E, W, N, S];
         let neighbors = unfilteredNeighbors
             .filter((node) =>
-                (node[0] >= 0 && node[0] < grid.length) && (node[1] >= 0 && node[1] < grid[0].length))
+                (node[0] >= 0 && node[0] < gameboard.height) && (node[1] >= 0 && node[1] < gameboard.width))
             .filter((node) =>
-                grid[node[0]][node[1]] !== 1);
+                gameboard.grid[node[0]][node[1]] !== 1);
         
         return neighbors;
     }
 
     #convertToID(row, column) {
-        return ((row * windowSize.width) + column);
+        return ((row * gameboard.width) + column);
     }
 
     #convertFromID(id) {
-        return [(id / windowSize.width) >> 0, id % windowSize.width];
+        return [(id / gameboard.width) >> 0, id % gameboard.width];
+    }
+
+    #checkInBounds(coordinates) {
+        return coordinates[0] >= 0 && coordinates[0] < gameboard.height ** coordinates[1] >= 0 && coordinates[1] < gameboard.width;
+    }
+
+    #calcCOST(target) {
+        let [sourceROW, sourceCOLUMN] = this.getCoordinates();
+        // let [targetROW, targetCOLUMN] = this.getCoordinates(target);
+        // let [deltaROW, deltaCOLUMN] = this.getCoordinates(this.calcDELTA(target));
+        let targetAngle = this.calcANGLE(target);
+        
+        let minRadius = {
+            POINT: [sourceROW + (2 * Math.sin(targetAngle)), sourceCOLUMN + (2 * Math.cos(targetAngle))],
+        };
+        let maxRadius = {
+            POINT: [sourceROW + (7 * Math.sin(targetAngle)), sourceCOLUMN + (10 * Math.cos(targetAngle))],
+            LEFT: [],
+            RIGHT: [],
+        };
+        maxRadius.LEFT = [maxRadius.POINT[0] + (4 * Math.sin(targetAngle - (Math.PI / 2))), maxRadius.POINT[1] + (4 * Math.cos(targetAngle - Math.PI / 2))];
+        maxRadius.RIGHT = [maxRadius.POINT[0] + (4 * Math.sin(targetAngle + (Math.PI / 2))), maxRadius.POINT[1] + (4 * Math.cos(targetAngle + Math.PI / 2))];
+
+        let leftANGLE = this.calcANGLE(this.getPosition(minRadius.POINT), this.getPosition(maxRadius.LEFT));
+        let rightANGLE = this.calcANGLE(this.getPosition(minRadius.POINT), this.getPosition(maxRadius.RIGHT));
+
+        this.calcDELTA(
+            { x: minRadius.POINT[1], y: minRadius.POINT[0] },
+            { x: maxRadius.LEFT[1], y: maxRadius.LEFT[0] },
+        );
+        let leftDELTA = { x: this.delta.x, y: this.delta.y };
+
+        this.calcDELTA(
+            { x: minRadius.POINT[1], y: minRadius.POINT[0] },
+            { x: maxRadius.RIGHT[1], y: maxRadius.RIGHT[0] },
+        );
+        let rightDELTA = { x: this.delta.x, y: this.delta.y };
+
+        let pacmanWEIGHT = [];
+        if (leftDELTA.x >= leftDELTA.y) {
+            for (let x = 0; x <= this.round(leftDELTA.x); x++) {
+                let row = this.floor(minRadius.POINT[0] + (x * Math.tan(leftANGLE))),
+                    column = this.floor(minRadius.POINT[1] + x);
+                if (this.#checkInBounds([row, column]))
+                    pacmanWEIGHT.push(this.#convertToID(row, column));
+            }
+        } else {
+            for (let y = 0; y <= this.round(leftDELTA.y); y++) {
+                let row = this.floor(minRadius.POINT[0] + y),
+                    column = this.floor(minRadius.POINT[1] + (y / Math.tan(leftANGLE)));
+                if (this.#checkInBounds([row, column]))
+                    pacmanWEIGHT.push(this.#convertToID(row, column));
+            }
+        }
+
+        if (rightDELTA.x >= rightDELTA.y) {
+            for (let x = 0; x <= this.round(rightDELTA.x); x++) {
+                let row = this.floor(minRadius.POINT[0] + (x * Math.tan(rightANGLE))),
+                    column = this.floor(minRadius.POINT[1] + x);
+                if (this.#checkInBounds([row, column]))
+                    pacmanWEIGHT.push(this.#convertToID(row, column));
+            }
+        } else {
+            for (let y = 0; y <= this.round(rightDELTA.y); y++) {
+                let row = this.floor(minRadius.POINT[0] + y),
+                    column = this.floor(minRadius.POINT[1] + (y / Math.tan(rightANGLE)));
+                if (this.#checkInBounds([row, column]))
+                    pacmanWEIGHT.push(this.#convertToID(row, column));
+            }
+        }
+
+        if (this.refs)
+            for (let weight of pacmanWEIGHT) this.drawLINES([maxRadius.LEFT, minRadius.POINT, maxRadius.RIGHT]);
+        
+        return pacmanWEIGHT;
     }
     
     calcPATH(target) {
@@ -306,7 +388,7 @@ class Ghost{
 
         let sourceID = this.#convertToID(sourceROW, sourceCOLUMN);
         let targetID = this.#convertToID(targetROW, targetCOLUMN);
-
+        
         let frontier = [];
         frontier.push(sourceID);
         
@@ -329,34 +411,133 @@ class Ghost{
 
         let path = [];
         let locationID = targetID;
+
         while (locationID) {
             path.push(this.#convertFromID(locationID));
             locationID = source[locationID];
         }
-
         this.path = path.reverse();
+
+        return path.length > 1 ? path[1] : path[0];
+    }
+
+    calcRETREAT(target) {
+        let [sourceROW, sourceCOLUMN] = this.getCoordinates();
+        let [targetROW, targetCOLUMN] = this.getCoordinates(target);
+
+        sourceROW = parseInt(sourceROW);
+        sourceCOLUMN = parseInt(sourceCOLUMN);
+        targetROW = parseInt(targetROW);
+        targetCOLUMN = parseInt(targetCOLUMN);
+
+        let sourceID = this.#convertToID(sourceROW, sourceCOLUMN);
+        let targetID = this.#convertToID(targetROW, targetCOLUMN);
+
+        let countdown = 15;
         
-        return path.length > 1 ? path[1]: path;
+        let frontier = [];
+        frontier.push(sourceID);
+        
+        let source = {};
+        source[sourceID] = null;
+
+        while (countdown) {
+
+            let currentID = frontier.shift();
+            // if (currentID === targetID && !retreat) break;
+
+            for (let neighbor of this.#neighbors(this.#convertFromID(currentID))) {
+                let neighborID = this.#convertToID(neighbor[0], neighbor[1]);
+                if (!Object.keys(source).includes(neighborID.toString()) && !this.#calcCOST(pacmanPosition).includes(neighborID)) {
+                    frontier.push(neighborID);
+                    source[neighborID] = currentID;
+                }
+            }
+
+            countdown--;
+        }
+
+        // this.outter = frontier;
+        // this.inner = source;
+
+        let greaterDistance = -Infinity;
+        let retreatTarget = null;
+
+        for (let front of frontier) {
+
+            let frontCoordinate = this.#convertFromID(front);
+            let distanceFromPacman = ((frontCoordinate[0] - targetROW) ** 2 + (frontCoordinate[1] - targetCOLUMN) ** 2) ** .5;
+
+            if (distanceFromPacman > greaterDistance) {
+                retreatTarget = frontCoordinate;
+                greaterDistance = distanceFromPacman;
+            }
+
+            if (this.refs) this.drawDOTS(frontCoordinate);
+        }
+
+        return { x: retreatTarget[1] * blocksize, y: retreatTarget[0] * blocksize };
+
+        // let path = [];
+        // let locationID = targetID;
+        // while (locationID) {
+        //     path.push(this.#convertFromID(locationID));
+        //     locationID = source[locationID];
+        // }
+
+        // this.path = path.reverse();
+        
+        // return path.length > 1 ? path[1] : path[0];
     }
     
-    calcDISTANCE(target) { 
-        this.calcDELTA(target);
+    calcDISTANCE(target) {
+
+        if (arguments.length > 1) {
+            let source = arguments[0];
+            target = arguments[1];
+            this.calcDELTA(source, target);
+        } else {
+            this.calcDELTA(target);
+        }
+
         return (this.delta.x**2 + this.delta.y**2)**(1/2)
     }
     
     calcANGLE(target) {
-        this.calcDELTA(target);
+        
+        if (arguments.length > 1) {
+            let source = arguments[0];
+            target = arguments[1];
+            this.calcDELTA(source, target);
+        } else {
+            this.calcDELTA(target);
+        }
+        
         return Math.atan2(this.delta.y, this.delta.x);
     }
 
     calcDELTA(target) {
-        this.delta.x = target.x - this.position.x;
-        this.delta.y = target.y - this.position.y;
+
+        if (arguments.length > 1) {
+            let source = arguments[0];
+            target = arguments[1];
+
+            this.delta.x = target.x - source.x;
+            this.delta.y = target.y - source.y;
+        } else {
+            this.delta.x = target.x - this.position.x;
+            this.delta.y = target.y - this.position.y;
+        }
+
     }
     
     radar(target) {
         if (this.calcDISTANCE(target) <= this.radaRadius) return true;
         return false;
+    }
+
+    getPosition(coordinate) {
+        return { x: coordinate[1] * blocksize, y: coordinate[0] * blocksize };
     }
 
     getCoordinates(target) {
@@ -395,7 +576,12 @@ class Ghost{
 
         this.screen.restore();
 
-        /* Radar Radius 
+        if (this.refs) this.drawRADAR();
+
+    }
+
+    drawRADAR() {
+
         this.screen.strokeStyle = ghostAttackRadiusColor;
         this.screen.moveTo(
             this.position.x + parseInt(this.width / 2) + this.radaRadius,
@@ -409,6 +595,49 @@ class Ghost{
             Math.PI * 2
         );
         this.screen.stroke();
-        */
+    }
+
+    drawLINES(path) {
+
+        this.screen.strokeStyle = "green";
+        this.screen.lineWidth = 2;
+        
+        for (let i = 0; i < path.length; i++) {
+            let point = {
+                x: path[i][1] * blocksize,
+                y: path[i][0] * blocksize,
+            }
+
+            if (i === 0) {
+                this.screen.moveTo(point.x, point.y);
+            } else {
+                this.screen.lineTo(point.x, point.y);
+            }
+        }
+
+        this.screen.stroke();
+    }
+    
+    drawDOTS(coordinates) {
+        // --------------------------------| start visualization --->
+        let position = {
+            x: coordinates[1] * blocksize,
+            y: coordinates[0] * blocksize,
+        };
+        this.screen.lineWidth = 1;
+        this.screen.strokeStyle = "blue";
+        this.screen.moveTo(
+            position.x + this.floor((3 * blocksize) / 4),
+            position.y + this.floor(blocksize / 2)
+        );
+        this.screen.arc(
+            position.x + this.floor(blocksize / 2),
+            position.y + this.floor(blocksize / 2),
+            blocksize / 4,
+            0,
+            Math.PI * 2
+        );
+        this.screen.stroke();
+        // ---------------------------------| end visualization --->
     }
 }
