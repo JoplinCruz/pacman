@@ -34,18 +34,18 @@ const grid = [
     [1,1,1,1,1,1,1, 1,1,1,1,1,1,1, 1,1,1,1,1,1,1, 1,1,1,1,1,1,1],
 ];
 
-const blocksize = 20,
-    spacing = parseInt(blocksize / 4),
-    lineWidth = 2,
-    foodsize = 2,
-    bigfoodsize = 6,
-    cherrysize = 6,
-    wallsize = blocksize - (spacing * 2),
-    fps = 24,
-    framerate = 1000 / fps,
-    pacmanSpeed = parseInt(blocksize / 4),
-    ghostSpeed = parseInt(blocksize / 5),
-    ghostInjuredSpeed = parseInt(blocksize / 2);
+const blocksize = 20,                               // 20;
+    spacing = parseInt(blocksize / 4),              // interger blocksize / 2
+    lineWidth = 2,                                  // 2
+    foodsize = 2,                                   // 2
+    bigfoodsize = 6,                                // 6
+    cherrysize = 6,                                 // 6
+    wallsize = blocksize - (spacing * 2),           // blocksize - ( spacing * 2)
+    fps = 24,                                       // 24
+    framerate = 1000 / fps,                         // 1000 / fps
+    pacmanSpeed = parseInt(blocksize / 4),              // blocksize / 4
+        ghostSpeed = parseInt(blocksize / 5),           // blocksize / 5
+        ghostInjuredSpeed = parseInt(blocksize / 2);    // blocksize / 2
 
 const gridSize = {
     width: grid[0].length,
@@ -94,7 +94,7 @@ const pacmanPOWER = {
 };
 
 const pacmanPosition = {
-    x: (13 * blocksize) + parseInt(blocksize / 2),
+    x: (13 * blocksize) + (2 * pacmanSpeed),
     y: 23 * blocksize,
 };
 
@@ -132,7 +132,7 @@ const ghostsCONFIG = [
             HOME: { x: 13 * blocksize, y: 14 * blocksize },
             SPEED: parseInt(blocksize / 2),
         },
-        radarRadius: 200,
+        radarRadius: 10 * blocksize,
     },
     {
         imageHealth: null,
@@ -153,7 +153,7 @@ const ghostsCONFIG = [
             HOME: { x: 11 * blocksize, y: 14 * blocksize },
             SPEED: parseInt(blocksize / 2),
         },
-        radarRadius: 200,
+        radarRadius: 11 * blocksize,
     },
     {
         imageHealth: null,
@@ -174,7 +174,7 @@ const ghostsCONFIG = [
             HOME: { x: 13 * blocksize, y: 14 * blocksize },
             SPEED: parseInt(blocksize / 2),
         },
-        radarRadius: 200,
+        radarRadius: 12 * blocksize,
     },
     {
         imageHealth: null,
@@ -195,6 +195,6 @@ const ghostsCONFIG = [
             HOME: { x: 15 * blocksize, y: 14 * blocksize },
             SPEED: parseInt(blocksize / 2),
         },
-        radarRadius: 200,
+        radarRadius: 13 * blocksize,
     },
 ];
