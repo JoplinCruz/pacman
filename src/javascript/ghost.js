@@ -218,17 +218,14 @@ class Ghost{
         let targetROW = target.y / blocksize;
         let targetCOLUMN = target.x / blocksize;
 
-        if (collider) {
-            if (gameboard.grid[this.floor(row)][this.floor(column)] === collider ||
-                gameboard.grid[this.ceil(row)][this.ceil(column)] === collider)
-                return true;
-        } else {
-            if (this.floor(row) === this.ceil(targetROW) && this.ceil(column) === this.floor(targetCOLUMN) ||
-                this.ceil(row) === this.floor(targetROW) && this.floor(column) === this.ceil(targetCOLUMN))
-                return true;
-        }
-
-        return false;
+        if (collider)
+            return gameboard.grid[this.floor(row)][this.floor(column)] === collider ||
+                gameboard.grid[this.ceil(row)][this.ceil(column)] === collider;
+        else
+            return this.floor(row) === this.ceil(targetROW) &&
+                this.ceil(column) === this.floor(targetCOLUMN) ||
+                this.ceil(row) === this.floor(targetROW) &&
+                this.floor(column) === this.ceil(targetCOLUMN);
     }
 
     checkStatus() {
@@ -248,8 +245,7 @@ class Ghost{
     }
     
     checkPath() {
-        return (this.position.x / blocksize) === parseInt(this.position.x / blocksize) &&
-            (this.position.y / blocksize) === parseInt(this.position.y / blocksize);
+        return this.position.x % blocksize === 0 && this.position.y % blocksize === 0;
     }
 
     checkBounds(coordinates) {
@@ -267,7 +263,7 @@ class Ghost{
         let unfilteredNeighbors = (row + column) % 2 === 0 ? [S, N, W, E] : [E, W, N, S];
         let neighbors = unfilteredNeighbors
             .filter((node) =>
-                (node[0] >= 0 && node[0] < gameboard.height) && (node[1] >= 0 && node[1] < gameboard.width))
+                this.checkBounds(node))
             .filter((node) =>
                 gameboard.grid[node[0]][node[1]] !== 1);
         
@@ -301,16 +297,13 @@ class Ghost{
             [6, 9], [6, 8], [6, 7],
         ];
 
-        let weight = [];
-
-        for (let POINT of points) {
-            let calculatedPoint = [
-                this.round(coordinate[0] + this.calcROTATION(POINT)[0]),
-                this.round(coordinate[1] + this.calcROTATION(POINT)[1])
-            ];
-            if (this.checkBounds(calculatedPoint))
-                weight.push(this.#convertToID(calculatedPoint));
-        }
+        let weight = points
+            .map((point) =>
+                this.#convertToID([
+                    this.round(coordinate[0] + this.calcROTATION(point)[0]),
+                    this.round(coordinate[1] + this.calcROTATION(point)[1]),
+                ]))
+            .filter((point) => this.checkBounds(point));
 
         return weight;
     }
@@ -367,9 +360,6 @@ class Ghost{
 
             countdown = retreat ? --countdown : frontier.length;
         }
-
-        // this.outter = frontier;
-        // this.inner = source;
 
         if (retreat)
             targetID = bestESCAPE.TARGET;

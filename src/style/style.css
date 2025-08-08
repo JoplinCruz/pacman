@@ -1,12 +1,15 @@
 
 
+@import url('https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Audiowide&family=Gloria+Hallelujah&family=Permanent+Marker&family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Rubik+Dirt&family=VT323&display=swap');
+
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
+.main--container {
     width: 100%;
     height: 100vh;
     display: flex;

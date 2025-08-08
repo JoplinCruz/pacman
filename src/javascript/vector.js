@@ -5,13 +5,84 @@ class Vector {
      * 
      * @param {number} x 
      * @param {number} y 
-     * @param {number} blocksize
+     * @param {number} width 
+     * @param {number} height 
+     * @param {number} blocksize 
      */
-    constructor(x, y, blocksize) {
+    constructor(x, y, width, height, blocksize) {
         this.x = x;
         this.y = y;
+        this.width = width;
+        this.height = height;
         this.blocksize = blocksize;
         this.toCoordinate();
+    }
+
+    /**
+     * 
+     * @param {number} x 
+     * @param {number} y 
+     */
+    change(x, y) {
+        this.x = x;
+        this.y = y;
+
+        this.toCoordinate();
+    }
+
+    /**
+     * 
+     * @param {number} step 
+     */
+    up(step) {
+        this.y -= step;
+        this.toCoordinate();
+    }
+
+    /**
+     * 
+     * @param {number} step 
+     */
+    down(step) {
+        this.y += step;
+        this.toCoordinate()
+    }
+    
+    /**
+     * 
+     * @param {number} step 
+     */
+    left(step) {
+        this.x -= step;
+        this.toCoordinate();
+    }
+    
+    /**
+     * 
+     * @param {number} step 
+     */
+    right(step) {
+        this.x += step;
+        this.toCoordinate();
+    }
+
+    /**
+     * 
+     * @returns {boolean}
+     */
+    checkGrid() {
+        return this.x % this.blocksize === 0 && this.y % this.blocksize === 0;
+    }
+
+    /**
+     * 
+     * @param {Vector} target 
+     */
+    checkCollision(target) {
+        return this.floor(target.coordinate.row) === this.ceil(this.coordinate.row) &&
+            this.ceil(target.coordinate.column) === this.floor(this.coordinate.column) ||
+            this.ceil(target.coordinate.row) === this.floor(this.coordinate.row) &&
+            this.floor(target.coordinate.column) === this.ceil(this.coordinate.column);
     }
 
     /**
@@ -20,10 +91,9 @@ class Vector {
      * @returns {Vector}
      */
     add(other) {
-        let vector = typeof (other) === "Vector" ?
+        return other instanceof Vector ?
             new Vector(this.x + other.x, this.y + other.y) :
-            vector = new Vector(this.x + other, this.y * other);
-        return vector;
+            new Vector(this.x + other, this.y * other);
     }
 
     /**
@@ -32,10 +102,9 @@ class Vector {
      * @returns {Vector}
      */
     multiply(other) {
-        let vector = typeof (other) === "Vector" ?
+        return other instanceof Vector ?
             new Vector(this.x * other.x, this.y * other.y) :
             new Vector(this.x * other, this.y * other);
-        return vector;
     }
 
     /**
@@ -44,10 +113,9 @@ class Vector {
      * @returns {Vector}
      */
     delta(target) {
-        let vector = arguments.length > 1 ?
+        return arguments.length > 1 ?
             new Vector(arguments[1].x - arguments[0].x, arguments[1].y - arguments[0].y) :
             new Vector(target.x - this.x, target.y - this.y);
-        return vector;
     }
 
     /**
@@ -76,10 +144,10 @@ class Vector {
      * @returns {Vector}
      */
     normal(target) {
-        let delta = arguments.length > 1 ? this.delta(arguments[0], arguments[1]) : this.delta(target);
-        a = delta.x;
-        b = delta.y;
-        c = arguments.length > 1 ? this.distance(arguments[0], arguments[1]) : this.distance(target);
+        let delta = arguments.length > 1 ? this.delta(arguments[0], arguments[1]) : this.delta(target),
+            a = delta.x,
+            b = delta.y,
+            c = arguments.length > 1 ? this.distance(arguments[0], arguments[1]) : this.distance(target);
         return new Vector(a / c, b / c);
     }
 
@@ -88,35 +156,29 @@ class Vector {
      * @returns {number[]}
      */
     getCoordinate() {
-        return [this.coordinate.row, this.coordinate.column];
+        return [this.floor(this.coordinate.row), this.floor(this.coordinate.column)];
     }
 
-    /**
-     * 
-     * @returns {number[]}
-     */
     toCoordinate() {
-        let coordinate = this.multiply(1 / this.blocksize).floor();
         this.coordinate = {
-            row: coordinate.y,
-            column: coordinate.x
+            row: this.y / this.blocksize,
+            column: this.x / this.blocksize,
         };
-        return [this.coordinate.row, this.coordinate.column];
     }
 
     /**
      * 
      * @param {number[]} coordinate 
-     * @returns {Vector}
      */
     toPosition(coordinate) {
-        return new Vector(coordinate[1], coordinate[0]).multiply(this.blocksize);
+        this.x = coordinate[1] * this.blocksize;
+        this.y = coordinate[0] * this.blocksize;
+        this.toCoordinate();
     }
 
     /**
      * 
      * @param {number} angle 
-     * @returns {Vector}
      */
     rotation(angle) {
         return new Vector(
@@ -127,34 +189,49 @@ class Vector {
 
     /**
      * 
-     * @param {Vector | undefined} vector 
-     * @returns {Vector}
+     * @returns {number[number[]]}
      */
-    floor(vector) {
-        return vector ?
-            new Vector(Math.floor(vector.x), Math.floor(vector.y)) :
-            new Vector(Math.floor(this.x), Math.floor(this.y));
+    neighbors(coordinate) {
+        let row = this.floor(this.coordinate.row), column = this.floor(this.coordinate.column);
+        if (coordinate) [row, column] = coordinate;
+
+        let N = [row - 1, column],
+            S = [row + 1, column],
+            W = [row, column - 1],
+            E = [row, column + 1];
+        
+        let unfilteredNeighbors = (row + column) % 2 === 0 ? [N, S, W, E] : [E, W, S, N];
+        let neighbors = unfilteredNeighbors.filter((node) =>
+            node[0] >= 0 && node[0] < this.height / this.blocksize && node[1] >= 0 && node[1] < this.width / this.blocksize
+        );
+
+        return neighbors;
     }
 
     /**
      * 
-     * @param {Vector | undefined} vector 
+     * @param {number} number 
      * @returns {Vector}
      */
-    ceil(vector) {
-        return vector ?
-            new Vector(Math.ceil(vector.x), Math.ceil(vector.y)) :
-            new Vector(Math.ceil(this.x), Math.ceil(this.y));
+    floor(number) {
+        return Math.floor(number)
     }
 
     /**
      * 
-     * @param {Vector | undefined} vector 
+     * @param {number} number 
      * @returns {Vector}
      */
-    round(vector) {
-        return vector ?
-            new Vector(Math.round(vector.x), Math.round(vector.y)) :
-            new Vector(Math.round(this.x), Math.round(this.y));
+    ceil(number) {
+        return Math.ceil(number);
+    }
+
+    /**
+     * 
+     * @param {number} number 
+     * @returns {Vector}
+     */
+    round(numebr) {
+        return Math.round(number);
     }
 }

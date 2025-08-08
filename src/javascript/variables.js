@@ -35,7 +35,7 @@ const grid = [
 ];
 
 const blocksize = 20,                               // 20;
-    spacing = parseInt(blocksize / 4),              // interger blocksize / 2
+    spacing = parseInt(blocksize / 4),              // integer blocksize / 2
     lineWidth = 2,                                  // 2
     foodsize = 2,                                   // 2
     bigfoodsize = 6,                                // 6
@@ -43,9 +43,9 @@ const blocksize = 20,                               // 20;
     wallsize = blocksize - (spacing * 2),           // blocksize - ( spacing * 2)
     fps = 24,                                       // 24
     framerate = 1000 / fps,                         // 1000 / fps
-    pacmanSpeed = parseInt(blocksize / 4),              // blocksize / 4
-        ghostSpeed = parseInt(blocksize / 5),           // blocksize / 5
-        ghostInjuredSpeed = parseInt(blocksize / 2);    // blocksize / 2
+    pacmanSpeed = parseInt(blocksize / 4),          // blocksize / 4
+    ghostSpeed = parseInt(blocksize / 5),           // blocksize / 5
+    ghostInjuredSpeed = parseInt(blocksize / 2);    // blocksize / 2
 
 const gridSize = {
     width: grid[0].length,
@@ -83,7 +83,8 @@ const game = {
 
 const pacmanCONFIG = {
     speed: parseInt(blocksize / 4),
-    position: { x: (13 * blocksize) + (2 * pacman.speed) },
+    position: { x: (13 * blocksize) + (2 * pacmanSpeed), y: 23 * blocksize },
+    pos: new Vector(13 * blocksize + 2 * pacmanSpeed, 23 * blocksize, windowSize.width, windowSize.height, blocksize),
     power: { ON: false, TIMER: 0 },
     life: 3,
 };

@@ -17,7 +17,7 @@ class Pacman {
         this.cherry = 0;
         this.scale = 1.5;
         this.life = 3;
-        // this.lifeInterval = null;
+        this.death = 0;
         this.defaults();
     }
 
@@ -32,7 +32,7 @@ class Pacman {
             bigfood: this.bigfood,
             cherry: this.cherry,
             life: this.life,
-            // lifeInterval: this.lifeInterval,
+            death: this.death,
         }
     }
 
@@ -42,18 +42,11 @@ class Pacman {
         this.direction = this.default.direction;
         this.nextDirection = this.default.nextDirection;
         this.frameCount = this.default.frameCount;
-
-        // if (this.lifeInterval > 5) {
-        //     console.log(this.lifeInterval);
-        //     this.life--;
-        //     console.log(this.life);
-        //     this.lifeInterval = 0;
-        // }
+        this.death = this.defaults.death;
     }
 
     runtime() {
         this.frameCount = this.frameCount === this.frameLength - 1 ? 0 : this.frameCount + 1;
-        // this.lifeInterval++;
 
         this.turnDirection();
         this.forward();
@@ -114,10 +107,8 @@ class Pacman {
     }
 
     turnDirection() {
-        let [row, column] = this.getCoordinates();
-        
-        if (this.floor(column) === column &&
-            this.floor(row) === row || 
+        if (this.position.x % blocksize === 0 &&
+            this.position.y % blocksize === 0 || 
             this.direction % 2 === this.nextDirection % 2) {
             this.direction = this.isPossibleTurn() ? this.nextDirection : this.direction;
         }
@@ -192,6 +183,7 @@ class Pacman {
                     this.ceil(pacmanROW) === this.floor(ghostROW) &&
                     this.ceil(pacmanCOLUMN) === this.floor(ghostCOLUMN)) {
                     this.life = this.life <= 0 ? 0 : this.life - 1;
+                    this.death += 1;
                     game.RESET = true;
                     game.TIMER = 0;
                 }
