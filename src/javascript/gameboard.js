@@ -1,12 +1,65 @@
 
-class Grid{
+class Gameboard extends Grid{
+
+    NULL = null;
+    SPACE = 0;
+    WALL = 1;
+    FOOD = 2;
+    BIGFOOD = 3;
+    CHERRY = 4;
 
     constructor(canvas, context, grid) {
+        super();
         this.canvas = canvas;
         this.screen = context;
         this.grid = grid;
         this.width = this.grid[0].length;
         this.height = this.grid.length;
+    }
+
+    /**
+     * 
+     * @param {Grid} coordinate 
+     * @param {number} someone 
+     */
+    fill(coordinate, someone) {
+        this.grid[coordinate.row][coordinate.column] = someone;
+    }
+
+    /**
+     * 
+     * @param {Grid} coordinate 
+     * @returns {number}
+     */
+    collision(coordinate) {
+        return this.grid[coordinate.row][coordinate.column];
+    }
+
+    /**
+     * 
+     * @param {Grid} coordinate 
+     * @returns {boolean}
+     */
+    checkBounds(coordinate) {
+        return coordinate.row >= 0 && coordinate.row < this.height && coordinate.column >= 0 && coordinate.column < this.width;
+    }
+
+    /**
+     * 
+     * @param {Grid} coordinate 
+     * @returns {Grid[]}
+     */
+    neighbors(coordinate) {
+        let N = new Grid(coordinate.row - 1, coordinate.column),
+            S = new Grid(coordinate.row + 1, coordinate.column),
+            W = new Grid(coordinate.row, coordinate.column - 1),
+            E = new Grid(coordinate.row, coordinate.column + 1);
+
+        let unfilteredNeighbors = (coordinate.row + coordinate.column) % 2 === 0 ? [N, S, W, E] : [E, W, S, N];
+        let neighbors = unfilteredNeighbors
+            .filter((coord) => this.checkBounds(coord))
+            .filter((coord) => this.collision(coord) !== this.WALL);
+        return neighbors;
     }
 
     draw() {

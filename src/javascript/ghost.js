@@ -1,19 +1,39 @@
 
 class Ghost{
-    constructor(context, imageHealth, imageRetreat, imageInjured, position, direction, width, height, scale, speed, idleRoute, injured, radarRadius, color) {
+
+    /**
+     * 
+     * @param {HTMLCanvasElement} context 
+     * @param {HTMLImageElement} imageHealth 
+     * @param {HTMLImageElement} imageRetreat 
+     * @param {HTMLImageElement} imageInjured 
+     * @param {Vector} position 
+     * @param {number} direction 
+     * @param {number} width 
+     * @param {number} height 
+     * @param {number} scale 
+     * @param {number} speed 
+     * @param {Vector[]} idleRoute 
+     * @param {object} injured 
+     * @param {number} radarRadius 
+     * @param {string} color 
+     * @param {Gameboard} gameboard 
+     */
+    constructor(context, imageHealth, imageRetreat, imageInjured, position, direction, width, height, scale, speed, idleRoute, injured, radarRadius, color, gameboard) {
         this.screen = context;
         this.imageHealth = imageHealth;
         this.imageRetreat = imageRetreat;
         this.imageInjured = imageInjured;
         this.image = this.imageHealth;
         this.position = position;
-        this.nextPosition = { ...this.position };
-        this.delta = { x: 0, y: 0 };
+        this.nextPosition = new Vector(this.position.x, this.position.y);
+        this.delta = new Vector(0,0); // remove this
         this.width = width;
         this.height = height;
         this.direction = direction;
         this.speed = speed;
         this.color = color;
+        this.gameboard = gameboard;
         this.frameCount = 0;
         this.frameLength = 3;
         this.scale = scale;
@@ -28,12 +48,6 @@ class Ghost{
             RECOVERY: 4,
         };
         this.status = this.action.ATTACK;
-        this.evadeTargets = [
-            {x: 1 * blocksize, y: 1 * blocksize},
-            {x: 26 * blocksize, y: 1 * blocksize},
-            {x: 1 * blocksize, y: 29 * blocksize},
-            {x: 26 * blocksize, y: 29 * blocksize},
-        ];
         this.idleRoute = idleRoute;
         this.idleIndex = 0;
         this.idleLoop = false;
@@ -47,25 +61,23 @@ class Ghost{
 
     defaults() { 
         this.default = {
-            position: { ...this.position },
-            nextPosition: { ...this.nextPosition },
+            position: { x: this.position.x, y: this.position.y },
+            nextPosition: { x: this.position.x, y: this.position.y },
             direction: this.direction,
             speed: this.speed,
             idleLoop: this.idleLoop,
-            injured: this.injured,
+            injured: { ...this.injured },
             target: this.target,
         };
     }
     
     reset() {
-        this.position.x = this.default.position.x;
-        this.position.y = this.default.position.y;
-        this.nextPosition.x = this.default.nextPosition.x;
-        this.nextPosition.y = this.default.nextPosition.y;
+        this.position.change(this.default.position.x, this.default.position.y);
+        this.nextPosition.change(this.default.nextPosition.x, this.nextPosition.y);
         this.speed = this.default.speed;
         this.direction = this.default.direction;
         this.status = this.default.status;
-        this.injured = this.default.injured;
+        this.injured = { ...this.default.injured };
         this.target = this.default.target;
     }
 
@@ -74,8 +86,8 @@ class Ghost{
         if (this.delay.COUNT === this.delay.LENGTH)
             this.frameCount = this.frameCount === this.frameLength - 1 ? 0 : this.frameCount + 1;
 
-        if (this.checkCollision(pacmanPosition)) {
-            if (pacmanPOWER.ON) {
+        if (this.checkCollision(pacmanCONFIG.position)) {
+            if (pacmanCONFIG.power.ON) {
                 this.injured.HURT = true;
                 this.injured.SAFE = false;
             }
@@ -85,7 +97,7 @@ class Ghost{
         this.main();
         
         this.forward();
-        if (this.checkCollision(this.position, WALL))
+        if (this.checkCollision(this.gameboard.WALL))
             this.backward();
     }
 
@@ -121,7 +133,7 @@ class Ghost{
             }
         }
 
-        if (this.checkPath())
+        if (this.position.checkGrid())
             this.changeDirection(this.target);
     }
     
@@ -141,18 +153,17 @@ class Ghost{
                 break;
         }
 
-        this.target = pacmanPosition;
+        this.target = pacmanCONFIG.position;
 
-        if (this.checkPath())
+        if (this.position.checkGrid())
             this.changeDirection(this.target);
         
     }
 
     retreat() {
-        // this.target = this.calcRETREAT(pacmanPosition);
-        this.target = pacmanPosition;
+        this.target = pacmanCONFIG.position;
 
-        if (this.checkPath())
+        if (this.position.checkGrid())
             this.changeDirection(this.target);
     }
     
@@ -162,7 +173,7 @@ class Ghost{
         if (this.checkCollision(this.injured.HOME))
             this.injured.HURT = false;
         
-        if (this.checkPath()) {
+        if (this.position.checkGrid()) {
             this.changeDirection(this.target);
         }
     }
@@ -170,16 +181,16 @@ class Ghost{
     move() {
         switch (this.direction) {
             case DIRECTION_RIGHT:
-                this.position.x += this.speed;
+                this.position.right(this.speed);
                 break;
             case DIRECTION_DOWN:
-                this.position.y += this.speed;
+                this.position.down(this.speed);
                 break;
             case DIRECTION_LEFT:
-                this.position.x -= this.speed;
+                this.position.left(this.speed);
                 break;
             case DIRECTION_UP:
-                this.position.y -= this.speed;
+                this.position.up(this.speed);
                 break;
         }
     }
@@ -198,14 +209,10 @@ class Ghost{
         
         this.speed = this.injured.HURT ? this.injured.SPEED : ghostSpeed;
 
-        let [row, column] = this.getCoordinates();
-        let [nextROW, nextCOLUMN] = this.#calcNextPATH(target);
+        this.nextPosition = this.position.convertFromGrid(this.#calcNextPATH(target));
 
-        this.nextPosition.x = nextCOLUMN * blocksize;
-        this.nextPosition.y = nextROW * blocksize;
-
-        let deltaROW = this.floor(nextROW) - this.floor(row);
-        let deltaCOLUMN = this.floor(nextCOLUMN) - this.floor(column);
+        let deltaROW = this.position.grid.floor().delta(this.nextPosition.grid).row;
+        let deltaCOLUMN = this.position.grid.floor().delta(this.nextPosition.grid).column;
 
         if (deltaROW > 0) this.direction = DIRECTION_DOWN;
         if (deltaROW < 0) this.direction = DIRECTION_UP;
@@ -213,27 +220,26 @@ class Ghost{
         if (deltaCOLUMN < 0) this.direction = DIRECTION_LEFT;
     }
 
-    checkCollision(target, collider) {
-        let [row, column] = this.getCoordinates();
-        let targetROW = target.y / blocksize;
-        let targetCOLUMN = target.x / blocksize;
+    /**
+     * 
+     * @param {Vector | number} collider 
+     * @returns {boolean}
+     */
+    checkCollision(collider) {
 
-        if (collider)
-            return gameboard.grid[this.floor(row)][this.floor(column)] === collider ||
-                gameboard.grid[this.ceil(row)][this.ceil(column)] === collider;
+        if (collider instanceof Vector)
+            return this.position.collision(collider);
         else
-            return this.floor(row) === this.ceil(targetROW) &&
-                this.ceil(column) === this.floor(targetCOLUMN) ||
-                this.ceil(row) === this.floor(targetROW) &&
-                this.floor(column) === this.ceil(targetCOLUMN);
+            return this.gameboard.collision(this.position.grid.ceil()) === collider ||
+                this.gameboard.collision(this.position.grid.floor()) === collider;
     }
 
     checkStatus() {
-        if (pacmanPOWER.ON) {
-            this.status = this.radar(pacmanPosition) ? this.action.RETREAT : this.action.IDLE;
+        if (pacmanCONFIG.power.ON) {
+            this.status = this.radar(pacmanCONFIG.position) ? this.action.RETREAT : this.action.IDLE;
             this.image = this.imageRetreat;
         } else {
-            this.status = this.radar(pacmanPosition) ? this.action.ATTACK : this.action.IDLE;
+            this.status = this.radar(pacmanCONFIG.position) ? this.action.ATTACK : this.action.IDLE;
             this.image = this.imageHealth;
             if (!this.injured.SAFE) this.injured.SAFE = true;
         }
@@ -243,45 +249,11 @@ class Ghost{
             this.status = this.action.RECOVERY;
         }
     }
-    
-    checkPath() {
-        return this.position.x % blocksize === 0 && this.position.y % blocksize === 0;
-    }
-
-    checkBounds(coordinates) {
-        return coordinates[0] >= 0 && coordinates[0] < gameboard.height ** coordinates[1] >= 0 && coordinates[1] < gameboard.width;
-    }
-
-    #neighbors(location) {
-        let [row, column] = location;
-
-        let N = [row - 1, column];
-        let S = [row + 1, column];
-        let E = [row, column + 1];
-        let W = [row, column - 1];
-
-        let unfilteredNeighbors = (row + column) % 2 === 0 ? [S, N, W, E] : [E, W, N, S];
-        let neighbors = unfilteredNeighbors
-            .filter((node) =>
-                this.checkBounds(node))
-            .filter((node) =>
-                gameboard.grid[node[0]][node[1]] !== 1);
-        
-        return neighbors;
-    }
-
-    #convertToID(coordinate) {
-        return (coordinate[0] * gameboard.width) + coordinate[1];
-    }
-
-    #convertFromID(id) {
-        return [(id / gameboard.width) >> 0, id % gameboard.width];
-    }
 
     #calcCOST(target) {
         
-        let coordinate = this.getCoordinates();
-        let points = [
+        let angle = this.position.angle(pacmanCONFIG.position);
+        let weight = [
             [-6, 9], [-6, 8], [-6, 7],
             [-5, 8], [-5, 7], [-5, 6],
             [-4, 6], [-4, 5],
@@ -294,28 +266,23 @@ class Ghost{
             [3, 5], [3, 4],
             [4, 6], [4, 5],
             [5, 8], [5, 7], [5, 6],
-            [6, 9], [6, 8], [6, 7],
-        ];
-
-        let weight = points
-            .map((point) =>
-                this.#convertToID([
-                    this.round(coordinate[0] + this.calcROTATION(point)[0]),
-                    this.round(coordinate[1] + this.calcROTATION(point)[1]),
-                ]))
-            .filter((point) => this.checkBounds(point));
-
+            [6, 9], [6, 8], [6, 7],]
+            .map(point => (new Grid(point[0], point[1]).rotation(angle)).add(this.position.grid))
+            .filter(point => this.gameboard.checkBounds(point))
+            .map(point => point.id);
+        
         return weight;
     }
 
+    /**
+     * 
+     * @param {Vector} target 
+     * @returns {Grid}
+     */
     #calcNextPATH(target) {
-        let retreat = this.status === this.action.RETREAT ? true : false;
+        let retreat = this.status === this.action.RETREAT;
         
-        let [sourceROW, sourceCOLUMN] = this.getCoordinates();
-        let [targetROW, targetCOLUMN] = this.getCoordinates(target);
-
-        let sourceID = this.#convertToID([this.floor(sourceROW), this.floor(sourceCOLUMN)]);
-        let targetID = this.#convertToID([this.floor(targetROW), this.floor(targetCOLUMN)]);
+        let targetID = target.grid.id;
 
         let countdown = 8;
         let bestESCAPE = {
@@ -324,36 +291,36 @@ class Ghost{
         };
         
         let frontier = [];
-        frontier.push(sourceID);
+        frontier.push(this.position.grid.floor());
         
         let source = {};
-        source[sourceID] = null;
+        source[this.position.grid.id] = null;
 
         while (countdown) {
+            
+            let current = frontier.shift();
+            
+            if (!current || (current.id === targetID && !retreat)) break;
 
-            let currentID = frontier.shift();
-            if (currentID === targetID && !retreat) break;
+            for (let neighbor of this.gameboard.neighbors(current.floor())) {
+                if (!Object.keys(source).includes(neighbor.id.toString())) {
+                    if (retreat && !this.#calcCOST(pacmanCONFIG.position).includes(neighbor.id)) {
+                        frontier.push(neighbor);
+                        source[neighbor.id] = current;
 
-            for (let neighbor of this.#neighbors(this.#convertFromID(currentID))) {
-                let neighborID = this.#convertToID(neighbor);
-                if (!Object.keys(source).includes(neighborID.toString())) {
-                    if (retreat && !this.#calcCOST(pacmanPosition).includes(neighborID)) {
-                        frontier.push(neighborID);
-                        source[neighborID] = currentID;
-
-                        let pacmanDISTANCE = this.calcDISTANCE(
-                            this.getPosition(neighbor),
-                            this.getPosition([targetROW, targetCOLUMN])
+                        let pacmanDISTANCE = this.position.distance(
+                            this.position.convertFromGrid(neighbor),
+                            target
                         );
 
                         if (pacmanDISTANCE > bestESCAPE.DISTANCE) {
                             bestESCAPE.DISTANCE = pacmanDISTANCE;
-                            bestESCAPE.TARGET = neighborID;
+                            bestESCAPE.TARGET = neighbor.id;
                         }
                     }
                     if (this.status !== this.action.RETREAT) {
-                        frontier.push(neighborID);
-                        source[neighborID] = currentID;
+                        frontier.push(neighbor);
+                        source[neighbor.id] = current;
                     }
                 }
             }
@@ -361,14 +328,17 @@ class Ghost{
             countdown = retreat ? --countdown : frontier.length;
         }
 
-        if (retreat)
+        
+        if (retreat) {
             targetID = bestESCAPE.TARGET;
-
-        let path = [];
+        }
+        
+        let path = retreat ? [] : [target.grid];
         let locationID = targetID;
-        while (locationID) {
-            path.push(this.#convertFromID(locationID));
-            locationID = source[locationID];
+        
+        while (source[locationID]) {
+            path.push(source[locationID]);
+            locationID = source[locationID] ? source[locationID].id : source[locationID];
         }
 
         this.path = path.reverse();
@@ -376,79 +346,9 @@ class Ghost{
         return path.length > 1 ? path[1] : path[0];
     }
     
-    calcDISTANCE(target) {
-
-        if (arguments.length > 1) {
-            let source = arguments[0];
-            target = arguments[1];
-            this.calcDELTA(source, target);
-        } else {
-            this.calcDELTA(target);
-        }
-
-        return (this.delta.x**2 + this.delta.y**2)**(1/2)
-    }
-    
-    calcANGLE(target) {
-        
-        if (arguments.length > 1) {
-            let source = arguments[0];
-            target = arguments[1];
-            this.calcDELTA(source, target);
-        } else {
-            this.calcDELTA(target);
-        }
-        
-        return Math.atan2(this.delta.y, this.delta.x);
-    }
-
-    calcDELTA(target) {
-
-        if (arguments.length > 1) {
-            let source = arguments[0];
-            target = arguments[1];
-            this.delta.x = target.x - source.x;
-            this.delta.y = target.y - source.y;
-        } else {
-            this.delta.x = target.x - this.position.x;
-            this.delta.y = target.y - this.position.y;
-        }
-    }
-    
-    calcROTATION(coordinate) {
-        let angle = this.calcANGLE(pacmanPosition);
-        return [
-            coordinate[1] * Math.sin(angle) + coordinate[0] * Math.cos(angle),
-            coordinate[1] * Math.cos(angle) - coordinate[0] * Math.sin(angle),
-        ];
-    }
-
-    getPosition(coordinate) {
-        return { x: coordinate[1] * blocksize, y: coordinate[0] * blocksize };
-    }
-
-    getCoordinates(target) {
-        if (target)
-            return [target.y / blocksize, target.x / blocksize];
-            
-        return [this.position.y / blocksize, this.position.x / blocksize];
-    }
-    
     radar(target) {
-        if (this.calcDISTANCE(target) <= this.radaRadius) return true;
+        if (this.position.distance(target) <= this.radaRadius) return true;
         return false;
-    }
-
-    floor(number) {
-        return Math.floor(number);
-    }
-
-    ceil(number) {
-        return Math.ceil(number);
-    }
-
-    round(number) {
-        return Math.round(number);
     }
 
     draw() {
@@ -460,8 +360,8 @@ class Ghost{
             0,
             this.image.height,
             this.image.height,
-            this.position.x + parseInt((this.width / 2) - ((this.width * this.scale) / 2)),
-            this.position.y + parseInt((this.height / 2) - ((this.height * this.scale) / 2)),
+            this.position.x + this.position.floor((this.width / 2) - ((this.width * this.scale) / 2)),
+            this.position.y + this.position.floor((this.height / 2) - ((this.height * this.scale) / 2)),
             this.width * this.scale,
             this.height * this.scale
         )
@@ -476,16 +376,39 @@ class Ghost{
 
         this.screen.strokeStyle = ghostAttackRadiusColor;
         this.screen.moveTo(
-            this.position.x + parseInt(this.width / 2) + this.radaRadius,
-            this.position.y + parseInt(this.height / 2),
+            this.position.x + this.position.floor(this.width / 2) + this.radaRadius,
+            this.position.y + this.position.floor(this.height / 2),
         );
         this.screen.arc(
-            this.position.x + parseInt(this.width / 2),
-            this.position.y + parseInt(this.height / 2),
+            this.position.x + this.position.floor(this.width / 2),
+            this.position.y + this.position.floor(this.height / 2),
             this.radaRadius,
             0,
             Math.PI * 2
         );
         this.screen.stroke();
+    }
+
+    /**
+     * 
+     * @param {Grid[]} grids 
+     */
+    drawDOT(grids) {
+        for (let point in grids) {
+            let position = this.position.convertFromGrid(point);
+            this.screen.strokeStyle = ghostAttackRadiusColor;
+            this.screen.moveTo(
+                position.x + position.floor(3 * this.width / 4),
+                position.y + position.floor(this.height / 2)
+            );
+            this.screen.arc(
+                position.x + position.floor(this.width / 2),
+                position.y + position.floor(this.height / 2),
+                this.width / 4,
+                0,
+                Math.PI * 2
+            );
+            this.screen.stroke();
+        }
     }
 }

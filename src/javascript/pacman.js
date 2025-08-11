@@ -1,6 +1,18 @@
 
 class Pacman {
-    constructor(context, image, position, width, height, direction, speed) {
+
+    /**
+     * 
+     * @param {HTMLCanvasElement} context 
+     * @param {HTMLImageElement} image 
+     * @param {Vector} position 
+     * @param {number} width 
+     * @param {number} height 
+     * @param {number} direction 
+     * @param {number} speed 
+     * @param {Gameboard} gameboard 
+     */
+    constructor(context, image, position, width, height, direction, speed, gameboard) {
         this.screen = context;
         this.image = image;
         this.position = position;
@@ -8,6 +20,7 @@ class Pacman {
         this.height = height;
         this.direction = direction;
         this.speed = speed;
+        this.gameboard = gameboard;
         this.frameCount = 3;
         this.frameLength = 7;
         this.nextDirection = direction;
@@ -23,7 +36,7 @@ class Pacman {
 
     defaults() {
         this.default = {
-            position: { ...this.position },
+            position: {x: this.position.x, y: this.position.y},
             direction: this.direction,
             nextDirection: this.nextDirection,
             frameCount: this.frameCount,
@@ -37,8 +50,7 @@ class Pacman {
     }
 
     reset() {
-        this.position.x = this.default.position.x;
-        this.position.y = this.default.position.y;
+        this.position.change(this.default.position.x, this.default.position.y);
         this.direction = this.default.direction;
         this.nextDirection = this.default.nextDirection;
         this.frameCount = this.default.frameCount;
@@ -50,38 +62,26 @@ class Pacman {
 
         this.turnDirection();
         this.forward();
-        if (this.collision()) this.backward();
+        if (this.collision())
+            this.backward();
         this.ghostCollision();
         this.eat();
         this.checkDump();
     }
 
-    collision(row, column, collider) {
-        if (row === undefined || column === undefined)
-            [row, column] = this.getCoordinates();
-
-        if (!collider) collider = WALL
-
-        if (gameboard.grid[this.ceil(row)][this.ceil(column)] === collider ||
-            gameboard.grid[this.floor(row)][this.floor(column)] === collider)
-            return true;
-
-        return false;
-    }
-
     move() {
         switch (this.direction) {
             case DIRECTION_RIGHT:
-                this.position.x += this.speed;
+                this.position.right(this.speed);
                 break;
             case DIRECTION_DOWN:
-                this.position.y += this.speed;
+                this.position.down(this.speed);
                 break;
             case DIRECTION_LEFT:
-                this.position.x -= this.speed;
+                this.position.left(this.speed);
                 break;
             case DIRECTION_UP:
-                this.position.y -= this.speed;
+                this.position.up(this.speed);
         }
     }
 
@@ -107,83 +107,68 @@ class Pacman {
     }
 
     turnDirection() {
-        if (this.position.x % blocksize === 0 &&
-            this.position.y % blocksize === 0 || 
+        if (this.position.checkGrid() || 
             this.direction % 2 === this.nextDirection % 2) {
             this.direction = this.isPossibleTurn() ? this.nextDirection : this.direction;
         }
     }
 
     isPossibleTurn() {
-        let [row, column] = this.getCoordinates();
-        row = this.floor(row);
-        column = this.floor(column);
+
+        let possibleDirection = new Grid(this.position.grid.row, this.position.grid.column);
 
         switch (this.nextDirection) {
             case DIRECTION_UP:
-                return !(this.collision(row - 1, column));
+                possibleDirection.up();
+                return !(this.collision(possibleDirection));
             case DIRECTION_DOWN:
-                return !(this.collision(row + 1, column));
+                possibleDirection.down();
+                return !(this.collision(possibleDirection));
             case DIRECTION_LEFT:
-                return !(this.collision(row, column - 1));
+                possibleDirection.left();
+                return !(this.collision(possibleDirection));
             case DIRECTION_RIGHT:
-                return !(this.collision(row, column + 1));
+                possibleDirection.right();
+                return !(this.collision(possibleDirection));
         }
     }
 
-    ceil(number) {
-        return Math.ceil(number);
-    }
+    collision(target) {
+        if (!target)
+            target = this.position.grid;
 
-    floor(number) {
-        return Math.floor(number);
-    }
-
-    round(number) {
-        return Math.round(number);
-    }
-
-    getCoordinates(target) {
-        if (target)
-            return [target.y / blocksize, target.x / blocksize];
-
-        return [this.position.y / blocksize, this.position.x / blocksize];
+        return this.gameboard.collision(target.ceil()) === this.gameboard.WALL ||
+            this.gameboard.collision(target.floor()) === this.gameboard.WALL
     }
 
     eat() {
 
-        let [row, column] = this.getCoordinates();
-        row = this.round(row), column = this.round(column);
-        
-        if (this.collision(row, column, FOOD)) {
-            gameboard.grid[row][column] = 0;
-            this.score += 1;
-            this.food += 1;
-        }
-
-        if (this.collision(row, column, BIGFOOD)) {
-            gameboard.grid[row][column] = 0;
-            this.score += 10;
-            this.bigfood += 1;
-            pacmanPOWER.ON = true;
-            pacmanPOWER.TIMER = 8 * fps;
+        switch (this.gameboard.collision(this.position.grid.round())) {
+            case this.gameboard.FOOD:
+                this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
+                this.score += 1;
+                this.food += 1;
+                break;
+            case this.gameboard.BIGFOOD:
+                this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE)
+                this.score += 10;
+                this.bigfood += 1;
+                pacmanCONFIG.power.ON = true;
+                pacmanCONFIG.power.TIMER = 8 * fps;
+                break;
         }
 
     }
 
     ghostCollision() {
 
-        for (let ghost of ghostsCONFIG) {            
-            let [pacmanROW, pacmanCOLUMN] = this.getCoordinates();
-            let [ghostROW, ghostCOLUMN] = this.getCoordinates(ghost.position);
+        for (let ghost of ghostsCONFIG) {
             
-            if (!pacmanPOWER.ON && !ghost.injured.HURT) {
-                if (this.floor(pacmanROW) === this.ceil(ghostROW) &&
-                    this.floor(pacmanCOLUMN) === this.ceil(ghostCOLUMN) ||
-                    this.ceil(pacmanROW) === this.floor(ghostROW) &&
-                    this.ceil(pacmanCOLUMN) === this.floor(ghostCOLUMN)) {
-                    this.life = this.life <= 0 ? 0 : this.life - 1;
-                    this.death += 1;
+            if (!pacmanCONFIG.power.ON && !ghost.injured.HURT) {
+
+                if (this.position.collision(ghost.position)) {
+                    this.life = this.life <= 0 ? 0 : --this.life;
+                    this.death++;
                     game.RESET = true;
                     game.TIMER = 0;
                 }
@@ -217,8 +202,8 @@ class Pacman {
             0,
             this.image.width / this.frameLength,
             this.image.height,
-            this.position.x + parseInt((this.width / 2) - ((this.width * this.scale) / 2)),
-            this.position.y + parseInt((this.height / 2) - ((this.height * this.scale) / 2)),
+            this.position.x + this.position.floor((this.width / 2) - ((this.width * this.scale) / 2)),
+            this.position.y + this.position.floor((this.height / 2) - ((this.height * this.scale) / 2)),
             this.width * this.scale,
             this.height * this.scale
         );

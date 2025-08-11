@@ -5,17 +5,15 @@ class Vector {
      * 
      * @param {number} x 
      * @param {number} y 
-     * @param {number} width 
-     * @param {number} height 
-     * @param {number} blocksize 
      */
-    constructor(x, y, width, height, blocksize) {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = width;
-        this.height = height;
+        this.width = windowSize.width;
+        this.height = windowSize.height;
         this.blocksize = blocksize;
-        this.toCoordinate();
+        this.grid = new Grid(this.y / this.blocksize, this.x * this.blocksize);
+        this.gridUpdate();
     }
 
     /**
@@ -27,7 +25,36 @@ class Vector {
         this.x = x;
         this.y = y;
 
-        this.toCoordinate();
+        this.gridUpdate();
+    }
+
+    /**
+     * 
+     * @param {Grid} grid 
+     */
+    updateFromGrid(grid) {
+        if (grid) {
+            this.x = grid.multiply(this.blocksize).column;
+            this.y = grid.multiply(this.blocksize).row;
+        } else {
+            this.x = this.grid.multiply(this.blocksize).column;
+            this.y = this.grid.multiply(this.blocksize).row;
+        }
+
+        this.gridUpdate()
+    }
+
+    /**
+     * 
+     * @param {Grid} grid 
+     * @returns {Vector} 
+     */
+    convertFromGrid(grid) {
+        return new Vector(grid.multiply(this.blocksize).column, grid.multiply(this.blocksize).row);
+    }
+
+    gridUpdate() {
+        this.grid.update(this.y / this.blocksize, this.x / this.blocksize);
     }
 
     /**
@@ -36,7 +63,7 @@ class Vector {
      */
     up(step) {
         this.y -= step;
-        this.toCoordinate();
+        this.gridUpdate();
     }
 
     /**
@@ -45,7 +72,7 @@ class Vector {
      */
     down(step) {
         this.y += step;
-        this.toCoordinate()
+        this.gridUpdate()
     }
     
     /**
@@ -54,7 +81,7 @@ class Vector {
      */
     left(step) {
         this.x -= step;
-        this.toCoordinate();
+        this.gridUpdate();
     }
     
     /**
@@ -63,7 +90,7 @@ class Vector {
      */
     right(step) {
         this.x += step;
-        this.toCoordinate();
+        this.gridUpdate();
     }
 
     /**
@@ -78,11 +105,11 @@ class Vector {
      * 
      * @param {Vector} target 
      */
-    checkCollision(target) {
-        return this.floor(target.coordinate.row) === this.ceil(this.coordinate.row) &&
-            this.ceil(target.coordinate.column) === this.floor(this.coordinate.column) ||
-            this.ceil(target.coordinate.row) === this.floor(this.coordinate.row) &&
-            this.floor(target.coordinate.column) === this.ceil(this.coordinate.column);
+    collision(target) {
+        return this.grid.floor().row === target.grid.ceil().row &&
+            this.grid.ceil().column === target.grid.floor().column ||
+            this.grid.ceil().row === target.grid.floor().row &&
+            this.grid.floor().column === target.grid.ceil().column;
     }
 
     /**
@@ -93,7 +120,7 @@ class Vector {
     add(other) {
         return other instanceof Vector ?
             new Vector(this.x + other.x, this.y + other.y) :
-            new Vector(this.x + other, this.y * other);
+            new Vector(this.x + other, this.y + other);
     }
 
     /**
@@ -124,7 +151,7 @@ class Vector {
      * @returns {number}
      */
     distance(target) {
-        let delta = arguments.length > 1 ? this.delta(target[0], target[1]) : this.delta(target);
+        let delta = arguments.length > 1 ? this.delta(arguments[0], arguments[1]) : this.delta(target);
         return (delta.x ** 2 + delta.y ** 2) ** .5;
     }
 
@@ -153,85 +180,34 @@ class Vector {
 
     /**
      * 
-     * @returns {number[]}
-     */
-    getCoordinate() {
-        return [this.floor(this.coordinate.row), this.floor(this.coordinate.column)];
-    }
-
-    toCoordinate() {
-        this.coordinate = {
-            row: this.y / this.blocksize,
-            column: this.x / this.blocksize,
-        };
-    }
-
-    /**
-     * 
-     * @param {number[]} coordinate 
-     */
-    toPosition(coordinate) {
-        this.x = coordinate[1] * this.blocksize;
-        this.y = coordinate[0] * this.blocksize;
-        this.toCoordinate();
-    }
-
-    /**
-     * 
-     * @param {number} angle 
-     */
-    rotation(angle) {
-        return new Vector(
-            this.x * Math.cos(angle) - this.y * Math.sin(angle),
-            this.x * Math.sin(angle) + this.y * Math.cos(angle)
-        ).round();
-    }
-
-    /**
-     * 
-     * @returns {number[number[]]}
-     */
-    neighbors(coordinate) {
-        let row = this.floor(this.coordinate.row), column = this.floor(this.coordinate.column);
-        if (coordinate) [row, column] = coordinate;
-
-        let N = [row - 1, column],
-            S = [row + 1, column],
-            W = [row, column - 1],
-            E = [row, column + 1];
-        
-        let unfilteredNeighbors = (row + column) % 2 === 0 ? [N, S, W, E] : [E, W, S, N];
-        let neighbors = unfilteredNeighbors.filter((node) =>
-            node[0] >= 0 && node[0] < this.height / this.blocksize && node[1] >= 0 && node[1] < this.width / this.blocksize
-        );
-
-        return neighbors;
-    }
-
-    /**
-     * 
      * @param {number} number 
-     * @returns {Vector}
+     * @returns {Vector | number}
      */
     floor(number) {
-        return Math.floor(number)
+        return typeof(number) === "number" ?
+            Math.floor(number) :
+            new Grid(Math.floor(this.x), Math.floor(this.y));
     }
 
     /**
      * 
      * @param {number} number 
-     * @returns {Vector}
+     * @returns {Vector | number}
      */
     ceil(number) {
-        return Math.ceil(number);
+        return typeof(number) === "number" ?
+            Math.ceil(number) :
+            new Grid(Math.ceil(this.x), Math.ceil(this.y));
     }
 
     /**
      * 
      * @param {number} number 
-     * @returns {Vector}
+     * @returns {Vector | number}
      */
-    round(numebr) {
-        return Math.round(number);
+    round(number) {
+        return typeof(number) === "number" ?
+            Math.round(number) :
+            new Grid(Math.round(this.x), Math.round(this.y));
     }
 }
