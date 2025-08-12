@@ -6,6 +6,12 @@ const ghostPinkIMG = document.getElementById("ghost-pink");
 const ghostYellowIMG = document.getElementById("ghost-yellow");
 const ghostRetreatIMG = document.getElementById("ghost-retreat");
 const ghostInjuredIMG = document.getElementById("ghost-injured");
+const pacmanLifeIMG = document.getElementById("pacman-life");
+const cherryIMG = document.getElementById("cherry-image");
+
+const highScore = document.querySelector("#best-score-value");
+const score = document.querySelector("#score-value");
+const message = document.querySelector("#message");
 
 const canvas = document.getElementById("canvas");
 const screen = canvas.getContext("2d");
@@ -18,7 +24,7 @@ const ghostsCONFIG = [
         position: new Vector((13 * blocksize) + (2 * ghostSpeed), 11 * blocksize),
         direction: DIRECTION_RIGHT,
         color: ghostCOLOR.RED,
-        scale: 1.5,
+        scale: 1.6,
         idleRoute: [
             new Vector(21 * blocksize, 1 * blocksize),
             new Vector(26 * blocksize, 4 * blocksize),
@@ -36,10 +42,10 @@ const ghostsCONFIG = [
         imageHealth: ghostCyanIMG,
         imageRetreat: ghostRetreatIMG,
         imageInjured: ghostInjuredIMG,
-        position: new Vector((11 * blocksize) + (2 * ghostSpeed), 14 * blocksize ),
-        direction: DIRECTION_RIGHT,
+        position: new Vector(11 * blocksize, 14 * blocksize ),
+        direction: DIRECTION_UP,
         color: ghostCOLOR.CYAN,
-        scale: 1.5,
+        scale: 1.6,
         idleRoute: [
             new Vector(21 * blocksize, 23 * blocksize),
             new Vector(26 * blocksize, 29 * blocksize),
@@ -57,10 +63,10 @@ const ghostsCONFIG = [
         imageHealth: ghostPinkIMG,
         imageRetreat: ghostRetreatIMG,
         imageInjured: ghostInjuredIMG,
-        position: new Vector((13 * blocksize) + (2 * ghostSpeed), 14 * blocksize ),
-        direction: DIRECTION_LEFT,
+        position: new Vector(13 * blocksize, 14 * blocksize ),
+        direction: DIRECTION_DOWN,
         color: ghostCOLOR.PINK,
-        scale: 1.5,
+        scale: 1.6,
         idleRoute: [
             new Vector(6 * blocksize, 1 * blocksize),
             new Vector(1 * blocksize, 4 * blocksize),
@@ -78,10 +84,10 @@ const ghostsCONFIG = [
         imageHealth: ghostYellowIMG,
         imageRetreat: ghostRetreatIMG,
         imageInjured: ghostInjuredIMG,
-        position: new Vector((15 * blocksize) + (2 * ghostSpeed), 14 * blocksize),
-        direction: DIRECTION_LEFT,
+        position: new Vector(15 * blocksize, 14 * blocksize),
+        direction: DIRECTION_UP,
         color: ghostCOLOR.YELLOW,
-        scale: 1.5,
+        scale: 1.6,
         idleRoute: [
             new Vector(6 * blocksize, 23 * blocksize),
             new Vector(1 * blocksize, 29 * blocksize),
@@ -101,7 +107,9 @@ const pacmanCONFIG = {
     speed: Math.floor(blocksize / 4),
     position: new Vector((13 * blocksize) + (2 * pacmanSpeed), 23 * blocksize),
     power: { ON: false, TIMER: 0 },
+    score: { SCORE: 0, HIGH: 0 },
     life: 3,
+    cherry: 3,
 };
 
 canvas.width = windowSize.width;
@@ -110,7 +118,17 @@ canvas.height = windowSize.height;
 const gameboard = new Gameboard(
     canvas,
     screen,
-    grid
+    grid,
+    {
+        score: score,
+        highscore: highScore,
+        life: life,
+        cherry: cherry,
+        message: message,
+        pacmanIMG: `<img src="./src/images/pacman-life.png" width="${blocksize}"/>`,
+        cherryIMG: `<img src="./src/images/cherry-image.png" width="${blocksize}"/>`,
+    },
+    blocksize,
 );
 
 const pacman = new Pacman(
@@ -122,6 +140,7 @@ const pacman = new Pacman(
     DIRECTION_RIGHT,
     pacmanCONFIG.speed,
     gameboard,
+    pacmanCONFIG.score,
 );
 
 const ghosts = [];
@@ -152,6 +171,10 @@ function runtime() {
         pacmanCONFIG.power.ON = pacmanCONFIG.power.TIMER <= 0 ? false : pacmanCONFIG.power.ON;
     }
 
+    gameboard.setLife(pacman.life);
+    gameboard.setCherry(pacmanCONFIG.cherry);
+    gameboard.setScore(pacman.score.SCORE, pacman.score.HIGH);
+    // gameboard.setMessage("Are you Ready?");
     gameboard.draw();
     
     if (game.PLAY) pacman.runtime();
@@ -163,12 +186,18 @@ function runtime() {
     }
 
     if (game.RESET) {
-        console.log("reset now...");
         pacman.reset();
         for (let ghost of ghosts) ghost.reset();
         game.RESET = false;
     }
 
+    if (game.RESTART) {
+        message.style.display = "";
+        gameboard.reset();
+        game.RESTART = false;
+    }
+
+    if (pacman.score.SCORE > pacman.score.HIGH) pacman.score.HIGH = pacman.score.SCORE;
 }
 
 window.addEventListener("keydown", (event) => {
@@ -176,6 +205,7 @@ window.addEventListener("keydown", (event) => {
 
     let noPause = () => {
         if (!game.PLAY) game.PLAY = true;
+        gameboard.setDisplayMessage(false);
     };
 
     if (keycode === "KeyP")

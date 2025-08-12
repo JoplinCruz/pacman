@@ -9,6 +9,10 @@
     box-sizing: border-box;
 }
 
+body {
+    background-color: black;
+}
+
 .main--container {
     width: 100%;
     height: 100vh;
@@ -17,9 +21,63 @@
     justify-content: center;
     align-items: center;
     background-color: black;
+    scale: .7;
+}
+
+.high-score {
+    position: relative;
+    width: 34rem;
+    padding: .5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    font-family: "Press Start 2P", "Rubik Dirt", "VT323", "Permanent Marker";
+    font-size: .8rem;
+    color: white;
+}
+
+.high-score .values {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2rem;
+}
+
+.gameboard {
+    position: relative;
 }
 
 #canvas {
     background: solid black;
     border: none;
+}
+
+.message {
+    position: absolute;
+    color: white;
+    /* display: inline; */
+    font-family: "Permanent Marker", "Press Start 2P", "VT323", "Rubik Dirt";
+    font-size: 1.4rem;
+    font-weight: 400;
+    top: calc(16.7 * 20 * 1px);
+    left: calc(12.4 * 20 * 1px);
+}
+
+.property {
+    width: 34rem;
+    height: 2rem;
+    font-family: "Press Start 2P", "Rubik Dirt", "VT323", "Permanent Marker";
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    padding: .5rem 2rem;
+    color: white;
+}
+
+.life, .cherry {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .5rem;
 }

@@ -8,6 +8,13 @@
 </head>
 <body>
     <div class="main--container">
+        <div class="high-score">
+            <h3>HIGH SCORE</h2>
+            <div class="values">
+                <h3 id="best-score-value">00</h3>
+                <h3 id="score-value">00</h3>
+            </div>
+        </div>
         <div class="gameboard">
             <div style="display: none;">
                 <img id="pacman" src="./src/images/pacman.png" alt="pacman">
@@ -19,6 +26,11 @@
                 <img id="ghost-injured" src="./src/images/ghost-injured.png" alt="ghost-injured">
             </div>
             <canvas id="canvas"></canvas>
+            <div id="message" class="message">READY!</div>
+        </div>
+        <div class="property">
+            <div id="life" class="life">@@@</div>
+            <div id="cherry" class="cherry">ooo</div>
         </div>
     </div>
     <script src="./src/javascript/variables.js"></script>

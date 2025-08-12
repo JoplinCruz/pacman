@@ -11,8 +11,9 @@ class Pacman {
      * @param {number} direction 
      * @param {number} speed 
      * @param {Gameboard} gameboard 
+     * @param {{SCORE: number, HIGH: number}} score
      */
-    constructor(context, image, position, width, height, direction, speed, gameboard) {
+    constructor(context, image, position, width, height, direction, speed, gameboard, score) {
         this.screen = context;
         this.image = image;
         this.position = position;
@@ -24,11 +25,12 @@ class Pacman {
         this.frameCount = 3;
         this.frameLength = 7;
         this.nextDirection = direction;
-        this.score = 0;
+        this.score = score;
         this.food = 0;
         this.bigfood = 0;
         this.cherry = 0;
-        this.scale = 1.5;
+        this.ghost = 0;
+        this.scale = 1.6;
         this.life = 3;
         this.death = 0;
         this.defaults();
@@ -40,12 +42,10 @@ class Pacman {
             direction: this.direction,
             nextDirection: this.nextDirection,
             frameCount: this.frameCount,
-            score: this.score,
+            score: { SCORE: this.score.SCORE, BEST: this.score.HIGH },
             food: this.food,
             bigfood: this.bigfood,
             cherry: this.cherry,
-            life: this.life,
-            death: this.death,
         }
     }
 
@@ -54,7 +54,8 @@ class Pacman {
         this.direction = this.default.direction;
         this.nextDirection = this.default.nextDirection;
         this.frameCount = this.default.frameCount;
-        this.death = this.defaults.death;
+        pacmanCONFIG.power.ON = false;
+        pacmanCONFIG.power.TIMER = 0;
     }
 
     runtime() {
@@ -67,6 +68,7 @@ class Pacman {
         this.ghostCollision();
         this.eat();
         this.checkDump();
+        this.win();
     }
 
     move() {
@@ -146,12 +148,12 @@ class Pacman {
         switch (this.gameboard.collision(this.position.grid.round())) {
             case this.gameboard.FOOD:
                 this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
-                this.score += 1;
+                this.score.SCORE += 1;
                 this.food += 1;
                 break;
             case this.gameboard.BIGFOOD:
                 this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE)
-                this.score += 10;
+                this.score.SCORE += 10;
                 this.bigfood += 1;
                 pacmanCONFIG.power.ON = true;
                 pacmanCONFIG.power.TIMER = 8 * fps;
@@ -163,23 +165,43 @@ class Pacman {
     ghostCollision() {
 
         for (let ghost of ghostsCONFIG) {
-            
-            if (!pacmanCONFIG.power.ON && !ghost.injured.HURT) {
 
-                if (this.position.collision(ghost.position)) {
+            if (this.position.collision(ghost.position) && !ghost.injured.HURT) {
+
+                if (!pacmanCONFIG.power.ON) {
                     this.life = this.life <= 0 ? 0 : --this.life;
                     this.death++;
                     game.RESET = true;
                     game.TIMER = 0;
+                } else {
+                    this.score.SCORE += 200;
+                    this.ghost++;
                 }
-            }
-            if (this.life <= 0) {
-                game.RESTART = true;
-                game.PLAY = false
-                game.TIMER = 0;
+
             }
         }
+
+        if (this.life <= 0) {
+            this.life = 3;
+            this.death = 0;
+            this.score.SCORE = 0;
+            game.RESET = true;
+            game.RESTART = true;
+            game.PLAY = false
+            game.TIMER = 0;
+        }
         
+    }
+
+    win() {
+        if (this.gameboard.empty()) {
+            if (this.death === 0) this.life = this.life <= 7 ? ++this.life : 7;
+            this.score.SCORE += 500;
+            game.RESET = true;
+            game.RESTART = true;
+            game.PLAY = false;
+            game.TIMER = 0;
+        }
     }
 
     draw() {

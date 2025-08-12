@@ -68,6 +68,7 @@ class Ghost{
             idleLoop: this.idleLoop,
             injured: { ...this.injured },
             target: this.target,
+            image: this.image,
         };
     }
     
@@ -79,6 +80,7 @@ class Ghost{
         this.status = this.default.status;
         this.injured = { ...this.default.injured };
         this.target = this.default.target;
+        this.image = this.default.image;
     }
 
     runtime() {
@@ -135,6 +137,8 @@ class Ghost{
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
+        // else
+        //     this.adjustPath();
     }
     
     attack() {
@@ -218,6 +222,33 @@ class Ghost{
         if (deltaROW < 0) this.direction = DIRECTION_UP;
         if (deltaCOLUMN > 0) this.direction = DIRECTION_RIGHT;
         if (deltaCOLUMN < 0) this.direction = DIRECTION_LEFT;
+    }
+
+    adjustPath() {
+        if (this.position.grid.row >= 13 && this.position.gris.row < 16 &&
+            this.position.grid.column >= 11 && this.position.grid.column < 17) {
+            this.changeDirection(new Vector(12 * this.position.blocksize, 13 * this.position.blocksize));
+        }
+
+    }
+
+    isPossibleTurn(direction) {
+        let possibleDirection = new Grid(this.position.grid.row, this.position.grid.column);
+
+        switch (direction) {
+            case DIRECTION_UP:
+                possibleDirection.up();
+                return !this.gameboard.collision(possibleDirection);
+            case DIRECTION_DOWN:
+                possibleDirection.down();
+                return !this.gameboard.collision(possibleDirection);
+            case DIRECTION_RIGHT:
+                possibleDirection.right();
+                return !this.gameboard.collision(possibleDirection);
+            case DIRECTION_LEFT:
+                possibleDirection.down();
+                return !this.gameboard.collision(possibleDirection);
+        }
     }
 
     /**
