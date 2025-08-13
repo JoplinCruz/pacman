@@ -79,6 +79,7 @@ const game = {
     RESTART: false,
     QUIT: false,
     TIMER: 0,
+    COUNTDOWN: 0,
 }
 
 const ghostCOLOR = {

@@ -12,8 +12,9 @@ class Pacman {
      * @param {number} speed 
      * @param {Gameboard} gameboard 
      * @param {{SCORE: number, HIGH: number}} score
+     * @param {{LIFE: number, DEATH: number}} live
      */
-    constructor(context, image, position, width, height, direction, speed, gameboard, score) {
+    constructor(context, image, position, width, height, direction, speed, gameboard, score, live) {
         this.screen = context;
         this.image = image;
         this.position = position;
@@ -31,8 +32,7 @@ class Pacman {
         this.cherry = 0;
         this.ghost = 0;
         this.scale = 1.6;
-        this.life = 3;
-        this.death = 0;
+        this.live = live;
         this.defaults();
     }
 
@@ -60,6 +60,7 @@ class Pacman {
 
     runtime() {
         this.frameCount = this.frameCount === this.frameLength - 1 ? 0 : this.frameCount + 1;
+        this.live.LIFE = this.live.LIFE >= 7 ? 7 : this.live.LIFE;
 
         this.turnDirection();
         this.forward();
@@ -149,17 +150,35 @@ class Pacman {
             case this.gameboard.FOOD:
                 this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
                 this.score.SCORE += 1;
-                this.food += 1;
+                this.food++;
                 break;
             case this.gameboard.BIGFOOD:
                 this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE)
                 this.score.SCORE += 10;
-                this.bigfood += 1;
+                this.bigfood++;
                 pacmanCONFIG.power.ON = true;
                 pacmanCONFIG.power.TIMER = 8 * fps;
                 break;
+            case this.gameboard.CHERRY:
+                let cherryPOWER = this.gameboard.cherryPOWER.LIFE;
+                this.getCherryPOWER(cherryPOWER);
         }
 
+    }
+
+    getCherryPOWER(power) {
+        switch (power) {
+            case this.gameboard.cherryPOWER.LIFE:
+                this.score.SCORE += 100;
+                this.cherry++;
+                this.live.LIFE++;
+                this.live.DEATH = 0;
+                break;
+            case this.gameboard.cherryPOWER.INVISIBLE:
+                break;
+            case this.gameboard.cherryPOWER.SPEED:
+                break;
+        }
     }
 
     ghostCollision() {
@@ -169,9 +188,10 @@ class Pacman {
             if (this.position.collision(ghost.position) && !ghost.injured.HURT) {
 
                 if (!pacmanCONFIG.power.ON) {
-                    this.life = this.life <= 0 ? 0 : --this.life;
-                    this.death++;
+                    this.live.LIFE = this.live.LIFE <= 0 ? 0 : --this.live.LIFE;
+                    this.live.DEATH++;
                     game.RESET = true;
+                    game.PLAY = false;
                     game.TIMER = 0;
                 } else {
                     this.score.SCORE += 200;
@@ -181,9 +201,9 @@ class Pacman {
             }
         }
 
-        if (this.life <= 0) {
-            this.life = 3;
-            this.death = 0;
+        if (!this.live.LIFE) {
+            this.live.LIFE = 3;
+            this.live.DEATH = 0;
             this.score.SCORE = 0;
             game.RESET = true;
             game.RESTART = true;
@@ -195,7 +215,7 @@ class Pacman {
 
     win() {
         if (this.gameboard.empty()) {
-            if (this.death === 0) this.life = this.life <= 7 ? ++this.life : 7;
+            if (!this.live.DEATH) this.live.LIFE = this.live.LIFE <= 7 ? ++this.live.LIFE : 7;
             this.score.SCORE += 500;
             game.RESET = true;
             game.RESTART = true;

@@ -6,15 +6,19 @@ const ghostPinkIMG = document.getElementById("ghost-pink");
 const ghostYellowIMG = document.getElementById("ghost-yellow");
 const ghostRetreatIMG = document.getElementById("ghost-retreat");
 const ghostInjuredIMG = document.getElementById("ghost-injured");
-const pacmanLifeIMG = document.getElementById("pacman-life");
-const cherryIMG = document.getElementById("cherry-image");
-
-const highScore = document.querySelector("#best-score-value");
-const score = document.querySelector("#score-value");
-const message = document.querySelector("#message");
 
 const canvas = document.getElementById("canvas");
 const screen = canvas.getContext("2d");
+
+const display = {
+    score: document.querySelector("#score-value"),
+    highscore: document.querySelector("#best-score-value"),
+    life: document.querySelector("#life"),
+    cherry: document.querySelector("#cherry"),
+    message: document.querySelector("#message"),
+    pacmanIMG: `<img src="./src/images/pacman-life.png" width="${blocksize}"/>`,
+    cherryIMG: `<img src="./src/images/cherry-image.png" width="${blocksize}"/>`,
+};
 
 const ghostsCONFIG = [
     {
@@ -103,13 +107,14 @@ const ghostsCONFIG = [
     },
 ];
 
+const highscore = Number(localStorage.getItem("highscore")) || 0;
+
 const pacmanCONFIG = {
     speed: Math.floor(blocksize / 4),
     position: new Vector((13 * blocksize) + (2 * pacmanSpeed), 23 * blocksize),
     power: { ON: false, TIMER: 0 },
-    score: { SCORE: 0, HIGH: 0 },
-    life: 3,
-    cherry: 3,
+    score: { SCORE: 0, HIGH: highscore },
+    live: { LIFE: 3, DEATH: 0 },
 };
 
 canvas.width = windowSize.width;
@@ -119,15 +124,7 @@ const gameboard = new Gameboard(
     canvas,
     screen,
     grid,
-    {
-        score: score,
-        highscore: highScore,
-        life: life,
-        cherry: cherry,
-        message: message,
-        pacmanIMG: `<img src="./src/images/pacman-life.png" width="${blocksize}"/>`,
-        cherryIMG: `<img src="./src/images/cherry-image.png" width="${blocksize}"/>`,
-    },
+    display,
     blocksize,
 );
 
@@ -141,6 +138,7 @@ const pacman = new Pacman(
     pacmanCONFIG.speed,
     gameboard,
     pacmanCONFIG.score,
+    pacmanCONFIG.live,
 );
 
 const ghosts = [];
@@ -171,9 +169,6 @@ function runtime() {
         pacmanCONFIG.power.ON = pacmanCONFIG.power.TIMER <= 0 ? false : pacmanCONFIG.power.ON;
     }
 
-    gameboard.setLife(pacman.life);
-    gameboard.setCherry(pacmanCONFIG.cherry);
-    gameboard.setScore(pacman.score.SCORE, pacman.score.HIGH);
     // gameboard.setMessage("Are you Ready?");
     gameboard.draw();
     
@@ -186,13 +181,14 @@ function runtime() {
     }
 
     if (game.RESET) {
+        localStorage.setItem("highscore", String(pacman.score.HIGH))
         pacman.reset();
         for (let ghost of ghosts) ghost.reset();
         game.RESET = false;
     }
 
     if (game.RESTART) {
-        message.style.display = "";
+        gameboard.setDisplayMessage(true);
         gameboard.reset();
         game.RESTART = false;
     }

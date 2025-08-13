@@ -8,6 +8,12 @@ class Gameboard extends Grid{
     BIGFOOD = 3;
     CHERRY = 4;
 
+    cherryPOWER = {
+        LIFE: 1,
+        INVISIBLE: 2,
+        SPEED: 3,
+    }
+
     /**
      * 
      * @param {HTMLCanvasElement} canvas 
@@ -24,9 +30,7 @@ class Gameboard extends Grid{
         this.height = this.grid.length;
         this.display = display;
         this.blocksize = blocksize;
-        this.score = { SCORE: 0, HIGH: 0 };
-        this.pacmanlife = 0;
-        this.cherry = 0;
+        this.cherry = { ON: false, COUNT: 3, };
         this.message = "READY!";
         this.defaults();
     }
@@ -40,19 +44,6 @@ class Gameboard extends Grid{
     reset() {
         this.grid = this.default.grid.map(row => [ ...row ]);
         this.defaults;
-    }
-
-    setScore(score, highscore) {
-        this.score.SCORE = score;
-        this.score.HIGH = highscore;
-    }
-
-    setLife(life) {
-        this.pacmanlife = life;
-    }
-
-    setCherry(cherry) {
-        this.cherry = cherry;
     }
 
     setMessage(message) {
@@ -288,10 +279,10 @@ class Gameboard extends Grid{
             }
         }
 
-        this.display.score.innerHTML = this.score.SCORE;
-        this.display.highscore.innerHTML = this.score.HIGH;
-        this.display.life.innerHTML = this.display.pacmanIMG.repeat(this.pacmanlife);
-        this.display.cherry.innerHTML = this.display.cherryIMG.repeat(this.cherry);
+        this.display.score.innerHTML = pacmanCONFIG.score.SCORE;
+        this.display.highscore.innerHTML = pacmanCONFIG.score.HIGH;
+        this.display.life.innerHTML = this.display.pacmanIMG.repeat(pacmanCONFIG.live.LIFE);
+        this.display.cherry.innerHTML = this.display.cherryIMG.repeat(this.cherry.COUNT);
         this.display.message.style.left = Math.floor((this.width / 2) * this.blocksize - (this.message.length / 2) * 12) + "px";
         this.display.message.innerHTML = this.message;
     }
