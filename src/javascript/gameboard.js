@@ -12,6 +12,7 @@ class Gameboard extends Grid{
         LIFE: 1,
         INVISIBLE: 2,
         SPEED: 3,
+        FREEZE: 4,
     }
 
     /**
@@ -19,9 +20,14 @@ class Gameboard extends Grid{
      * @param {HTMLCanvasElement} canvas 
      * @param {HTMLCanvasElement} context 
      * @param {Array<number[]>} grid 
-     * @param {{score: HTMLElement,highscore: HTMLElement, life: HTMLElement, cherry: HTMLElement, message: HTMLElement, pacmanIMG: HTMLImageElement, cherryIMG: HTMLImageElement} display 
+     * @param {{score: HTMLElement,highscore: HTMLElement, life: HTMLElement, cherry: HTMLElement, message: HTMLElement, pacmanIMG: HTMLImageElement, cherryIMG: HTMLImageElement}} display 
+     * @param {Score} score
+     * @param {Chronos} game
+     * @param {Power} power
+     * @param {number} blocksize
+     * @param {number} fps
      */
-    constructor(canvas, context, grid, display, blocksize) {
+    constructor(canvas, context, grid, display, score, game, power, blocksize, fps) {
         super();
         this.canvas = canvas;
         this.screen = context;
@@ -29,21 +35,55 @@ class Gameboard extends Grid{
         this.width = this.grid[0].length;
         this.height = this.grid.length;
         this.display = display;
+        this.score = score;
+        this.game = game;
+        this.power = power;
         this.blocksize = blocksize;
-        this.cherry = { ON: false, COUNT: 3, };
+        this.fps = fps;
+        // this.cherry = {
+        //     ON: false,
+        //     COUNT: 3,
+        //     COORDINATE: new Grid(17, 13),
+        //     ICON: cherryIconIMG,
+        //     WAKEUP: 0,
+        //     SLEEP: 0,
+        //     SELECTION: Object.keys(this.cherryPOWER),
+        //     POWER: null,
+        // };
         this.message = "READY!";
         this.defaults();
     }
 
     defaults() {
         this.default = {
-            grid: this.grid.map(row => [ ...row ]),
+            grid: this.grid.map(row => [...row]),
+            // cherry: {
+            //     ON: this.cherry.ON,
+            //     COUNT: this.cherry.COUNT,
+            //     COORDINATE: this.cherry.COORDINATE,
+            //     ICON: this.cherry.ICON,
+            //     WAKEUP: this.cherry.WAKEUP,
+            //     SLEEP: this.cherry.SLEEP,
+            //     SELECTION: [...this.cherry.SELECTION],
+            //     POWER: this.cherry.POWER,
+            // },
+            message: this.message,
         }
     }
 
     reset() {
-        this.grid = this.default.grid.map(row => [ ...row ]);
-        this.defaults;
+        this.grid = this.default.grid.map(row => [...row]);
+        // this.cherry.COUNT = this.default.cherry.COUNT;
+        // this.cherry.SELECTION = this.default.cherry.SELECTION;
+        this.message = this.default.message;
+    }
+
+    runtime() {
+        if (this.power.is_cherry_enable()) {
+            this.fill(this.power.getCherryPosition(), this.CHERRY);
+        } else {
+            this.fill(this.power.getCherryPosition(), this.SPACE);
+        }
     }
 
     setMessage(message) {
@@ -265,24 +305,34 @@ class Gameboard extends Grid{
     
                 screen.stroke();
                 
-                if (pivot === FOOD) {
+                if (pivot === this.FOOD) {
                     screen.fillStyle = foodColor;
                     screen.arc(x + parseInt(blocksize / 2), y + parseInt(blocksize / 2), foodsize, 0, 2 * Math.PI);
                     screen.fill();
                 }
                 
-                if (pivot === BIGFOOD) {
+                if (pivot === this.BIGFOOD) {
                     screen.fillStyle = foodColor;
                     screen.arc(x + parseInt(blocksize / 2), y + parseInt(blocksize / 2), bigfoodsize, 0, 2 * Math.PI);
                     screen.fill();
                 }
+
+                if (pivot === this.CHERRY) {
+                    this.screen.drawImage(
+                        this.cherry.ICON,
+                        this.cherry.COORDINATE.column * this.blocksize,
+                        this.cherry.COORDINATE.row * this.blocksize,
+                        this.blocksize,
+                        this.blocksize
+                    )
+                }
             }
         }
 
-        this.display.score.innerHTML = pacmanCONFIG.score.SCORE;
-        this.display.highscore.innerHTML = pacmanCONFIG.score.HIGH;
-        this.display.life.innerHTML = this.display.pacmanIMG.repeat(pacmanCONFIG.live.LIFE);
-        this.display.cherry.innerHTML = this.display.cherryIMG.repeat(this.cherry.COUNT);
+        this.display.score.innerHTML = String(this.score.score());
+        this.display.highscore.innerHTML = String(this.score.highscore());
+        this.display.life.innerHTML = this.display.pacmanIMG.repeat(pacmanSETTINGS.live.LIFE);
+        this.display.cherry.innerHTML = this.display.cherryIMG.repeat(this.power.getCherryQuantite());
         this.display.message.style.left = Math.floor((this.width / 2) * this.blocksize - (this.message.length / 2) * 12) + "px";
         this.display.message.innerHTML = this.message;
     }

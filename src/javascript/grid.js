@@ -64,6 +64,17 @@ class Grid {
 
     /**
      * 
+     * @param {number} row 
+     * @param {number} column 
+     * @returns {Grid}
+     */
+    create(row, column) {
+        if (row && column) return new Grid(row, column);
+        else return new Grid(this.row, this.column);
+    }
+
+    /**
+     * 
      * @param {Grid | number} other 
      */
     add(other) {

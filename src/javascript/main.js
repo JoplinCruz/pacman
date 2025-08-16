@@ -1,14 +1,34 @@
 
-const pacmanIMG = document.getElementById("pacman");
+const pacmanImageRIGHT = document.getElementById("pacman-right");
+const pacmanImageLEFT = document.getElementById("pacman-left");
+const pacmanImageUP = document.getElementById("pacman-up");
+const pacmanImageDOWN = document.getElementById("pacman-down");
 const ghostRedIMG = document.getElementById("ghost-red");
 const ghostCyanIMG = document.getElementById("ghost-cyan");
 const ghostPinkIMG = document.getElementById("ghost-pink");
 const ghostYellowIMG = document.getElementById("ghost-yellow");
 const ghostRetreatIMG = document.getElementById("ghost-retreat");
 const ghostInjuredIMG = document.getElementById("ghost-injured");
+const cherryIconIMG = document.getElementById("cherry-icon");
 
 const canvas = document.getElementById("canvas");
 const screen = canvas.getContext("2d");
+
+// this is unecessary, but i used for this time
+const powerSETTINGS = {
+    hero: {
+        bigfood: { timer: new Chronos() },
+        cherry: { timer: new Chronos() },
+    },
+    bigfood: {
+        icon: null,
+    },
+    cherry: {
+        coordinate: new Grid(17, 13),
+        icon: cherryIconIMG,
+        timer: new Chronos(),
+    },
+};
 
 const display = {
     score: document.querySelector("#score-value"),
@@ -20,7 +40,7 @@ const display = {
     cherryIMG: `<img src="./src/images/cherry-image.png" width="${blocksize}"/>`,
 };
 
-const ghostsCONFIG = [
+const ghostsSETTINGS = [
     {
         imageHealth: ghostRedIMG,
         imageRetreat: ghostRetreatIMG,
@@ -107,42 +127,55 @@ const ghostsCONFIG = [
     },
 ];
 
-const highscore = Number(localStorage.getItem("highscore")) || 0;
+const power = new Power(powerSETTINGS);
+const game = new Chronos();
+const score = new Score();
+score.load();
 
-const pacmanCONFIG = {
+const pacmanSETTINGS = {
     speed: Math.floor(blocksize / 4),
     position: new Vector((13 * blocksize) + (2 * pacmanSpeed), 23 * blocksize),
-    power: { ON: false, TIMER: 0 },
-    score: { SCORE: 0, HIGH: highscore },
+    score: score,
+    power: { ON: false, TIMER: 0 },                                 // change to power object
     live: { LIFE: 3, DEATH: 0 },
+    cherry: { ON: false, POWER: 0, COUNTDOWN: 30, COUNTER: 0 },     // remove this after
 };
 
 canvas.width = windowSize.width;
 canvas.height = windowSize.height;
 
+// insert power object into gameboard parameter
 const gameboard = new Gameboard(
     canvas,
     screen,
     grid,
     display,
+    score,
+    game,
+    power,
     blocksize,
+    fps,
 );
 
+// insert power object into pacman parameters
 const pacman = new Pacman(
     screen,
-    pacmanIMG,
-    pacmanCONFIG.position,
+    [pacmanImageRIGHT, pacmanImageDOWN, pacmanImageLEFT, pacmanImageUP],
+    pacmanSETTINGS.position,
     blocksize,
     blocksize,
     DIRECTION_RIGHT,
-    pacmanCONFIG.speed,
+    pacmanSpeed,
     gameboard,
-    pacmanCONFIG.score,
-    pacmanCONFIG.live,
+    score,
+    power,
+    pacmanSETTINGS.live,
+    pacmanSETTINGS.cherry,
 );
 
+// insert the power object into ghost parameters too
 const ghosts = [];
-for (let soul of ghostsCONFIG){
+for (let soul of ghostsSETTINGS){
     let ghost = new Ghost(
         screen,
         soul.imageHealth, soul.imageRetreat, soul.imageInjured,
@@ -155,57 +188,71 @@ for (let soul of ghostsCONFIG){
         soul.injured,
         soul.radarRadius,
         soul.color,
-        gameboard
+        gameboard,
+        power
     );
     ghosts.push(ghost);
 }
 
+
+
 function runtime() {
 
-    if (game.PLAY) game.TIMER++;
-
-    if (pacmanCONFIG.power.ON) {
-        pacmanCONFIG.power.TIMER--;
-        pacmanCONFIG.power.ON = pacmanCONFIG.power.TIMER <= 0 ? false : pacmanCONFIG.power.ON;
-    }
+    /** remove this block after  --------------------------------------------------------v */
+    // if (pacmanSETTINGS.power.ON) {
+    //     pacmanSETTINGS.power.TIMER--;
+    //     pacmanSETTINGS.power.ON = pacmanSETTINGS.power.TIMER <= 0 ? false : pacmanSETTINGS.power.ON;
+    // }
+    
+    // if (pacmanSETTINGS.cherry.ON) {
+    //     pacmanSETTINGS.cherry.COUNTDOWN--;
+    //     pacmanSETTINGS.cherry.ON = pacmanSETTINGS.cherry.COUNTDOWN <= 0 ? false : pacmanSETTINGS.ON;
+    // }
+    /** remove this block after  --------------------------------------------------------^ */
 
     // gameboard.setMessage("Are you Ready?");
-    gameboard.draw();
     
-    if (game.PLAY) pacman.runtime();
+    if (game.is_playing()) {
+        game.runtime();
+        power.runtime();
+        pacman.runtime(); 
+        gameboard.runtime();
+    }
+    
+    gameboard.draw();
     pacman.draw();
     
     for (let ghost of ghosts) {
-        if (game.PLAY) ghost.runtime();
+        if (game.is_playing()) ghost.runtime();
         ghost.draw();
     }
 
-    if (game.RESET) {
-        localStorage.setItem("highscore", String(pacman.score.HIGH))
+    if (game.round()) {
+        score.save();
         pacman.reset();
+        // gameboard.setCherryStartup();   // remove this after
+        power.cleanCherrySettings();
         for (let ghost of ghosts) ghost.reset();
-        game.RESET = false;
+        game.round(false);
     }
 
-    if (game.RESTART) {
+    if (game.end()) {
+        power.reset()
         gameboard.setDisplayMessage(true);
-        gameboard.reset();
-        game.RESTART = false;
+        gameboard.reset();              // remove cherry from this object
+        game.end(false);
     }
-
-    if (pacman.score.SCORE > pacman.score.HIGH) pacman.score.HIGH = pacman.score.SCORE;
 }
 
 window.addEventListener("keydown", (event) => {
     let keycode = event.code;
 
     let noPause = () => {
-        if (!game.PLAY) game.PLAY = true;
+        if (!game.is_playing()) game.play();
         gameboard.setDisplayMessage(false);
     };
 
-    if (keycode === "KeyP")
-        game.PLAY = !(game.PLAY);
+    if (keycode === "KeyP") game.is_playing() ? game.pause() : game.play();
 
     if (["KeyA", "ArrowLeft"].includes(keycode)) {
         pacman.changeDirection(DIRECTION_LEFT);

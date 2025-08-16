@@ -30,6 +30,17 @@ class Vector {
 
     /**
      * 
+     * @param {number} x 
+     * @param {number} y 
+     * @returns {Vector}
+     */
+    create(x, y) {
+        if (x && y) return new Vector(x, y);
+        else return new Vector(this.x, this.y);
+    }
+
+    /**
+     * 
      * @param {Grid} grid 
      */
     updateFromGrid(grid) {

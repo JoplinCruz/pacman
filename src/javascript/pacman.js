@@ -4,17 +4,19 @@ class Pacman {
     /**
      * 
      * @param {HTMLCanvasElement} context 
-     * @param {HTMLImageElement} image 
+     * @param {HTMLImageElement[]} image 
      * @param {Vector} position 
      * @param {number} width 
      * @param {number} height 
      * @param {number} direction 
      * @param {number} speed 
      * @param {Gameboard} gameboard 
-     * @param {{SCORE: number, HIGH: number}} score
+     * @param {Score} score
+     * @param {Power} power
      * @param {{LIFE: number, DEATH: number}} live
+     * @param {{ON: boolean, POWER: number, COUNTDOWN: number, COUNTER: number}} cherry
      */
-    constructor(context, image, position, width, height, direction, speed, gameboard, score, live) {
+    constructor(context, image, position, width, height, direction, speed, gameboard, score, power, live, cherry) {
         this.screen = context;
         this.image = image;
         this.position = position;
@@ -27,9 +29,7 @@ class Pacman {
         this.frameLength = 7;
         this.nextDirection = direction;
         this.score = score;
-        this.food = 0;
-        this.bigfood = 0;
-        this.cherry = 0;
+        this.power = power;
         this.ghost = 0;
         this.scale = 1.6;
         this.live = live;
@@ -42,10 +42,9 @@ class Pacman {
             direction: this.direction,
             nextDirection: this.nextDirection,
             frameCount: this.frameCount,
-            score: { SCORE: this.score.SCORE, BEST: this.score.HIGH },
             food: this.food,
             bigfood: this.bigfood,
-            cherry: this.cherry,
+            cherry: { ...this.cherry },
         }
     }
 
@@ -54,8 +53,6 @@ class Pacman {
         this.direction = this.default.direction;
         this.nextDirection = this.default.nextDirection;
         this.frameCount = this.default.frameCount;
-        pacmanCONFIG.power.ON = false;
-        pacmanCONFIG.power.TIMER = 0;
     }
 
     runtime() {
@@ -66,7 +63,7 @@ class Pacman {
         this.forward();
         if (this.collision())
             this.backward();
-        this.ghostCollision();
+        this.ghostTouch();
         this.eat();
         this.checkDump();
         this.win();
@@ -118,7 +115,7 @@ class Pacman {
 
     isPossibleTurn() {
 
-        let possibleDirection = new Grid(this.position.grid.row, this.position.grid.column);
+        let possibleDirection = this.position.grid.create();
 
         switch (this.nextDirection) {
             case DIRECTION_UP:
@@ -148,53 +145,64 @@ class Pacman {
 
         switch (this.gameboard.collision(this.position.grid.round())) {
             case this.gameboard.FOOD:
-                this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
-                this.score.SCORE += 1;
-                this.food++;
+                this.eatFood();
                 break;
             case this.gameboard.BIGFOOD:
-                this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE)
-                this.score.SCORE += 10;
-                this.bigfood++;
-                pacmanCONFIG.power.ON = true;
-                pacmanCONFIG.power.TIMER = 8 * fps;
+                this.eatBigFood();
                 break;
             case this.gameboard.CHERRY:
-                let cherryPOWER = this.gameboard.cherryPOWER.LIFE;
-                this.getCherryPOWER(cherryPOWER);
+                this.eatCherry();
+                break;
         }
 
     }
 
-    getCherryPOWER(power) {
+    eatFood() {
+        this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
+        this.score.score(1);
+    }
+
+    eatBigFood() {
+        this.gameboard.fill(this.position.grid.round(), this.gameboard.SPACE);
+        this.power.active_bigfood();
+        this.score.score(10);
+    }
+
+    eatCherry() {
+        if (this.power.is_cherry_power()) return;
+
+        this.power.active_cherry();
+        let power = this.power.getCherryPower();
+        
         switch (power) {
-            case this.gameboard.cherryPOWER.LIFE:
-                this.score.SCORE += 100;
-                this.cherry++;
+            case this.power.cherry_power.LIFE:
+                this.score.score(100);
                 this.live.LIFE++;
                 this.live.DEATH = 0;
                 break;
-            case this.gameboard.cherryPOWER.INVISIBLE:
+            case this.power.cherry_power.INVISIBLE:
                 break;
-            case this.gameboard.cherryPOWER.SPEED:
+            case this.power.cherry_power.SPEED:
+                break;
+            case this.power.cherry_power.FREEZE:
                 break;
         }
     }
 
-    ghostCollision() {
+    ghostTouch() {
 
-        for (let ghost of ghostsCONFIG) {
+        for (let ghost of ghostsSETTINGS) {
 
             if (this.position.collision(ghost.position) && !ghost.injured.HURT) {
 
-                if (!pacmanCONFIG.power.ON) {
+                if (!this.power.is_bigfood_power()) {
                     this.live.LIFE = this.live.LIFE <= 0 ? 0 : --this.live.LIFE;
                     this.live.DEATH++;
-                    game.RESET = true;
-                    game.PLAY = false;
-                    game.TIMER = 0;
+                    game.round(true);
+                    game.pause();
+                    game.current(0);
                 } else {
-                    this.score.SCORE += 200;
+                    this.score.score(200);
                     this.ghost++;
                 }
 
@@ -204,11 +212,9 @@ class Pacman {
         if (!this.live.LIFE) {
             this.live.LIFE = 3;
             this.live.DEATH = 0;
-            this.score.SCORE = 0;
-            game.RESET = true;
-            game.RESTART = true;
-            game.PLAY = false
-            game.TIMER = 0;
+            this.score.reset();
+            this.power.resetCherryQuantite();
+            this.tryNext();
         }
         
     }
@@ -216,40 +222,30 @@ class Pacman {
     win() {
         if (this.gameboard.empty()) {
             if (!this.live.DEATH) this.live.LIFE = this.live.LIFE <= 7 ? ++this.live.LIFE : 7;
-            this.score.SCORE += 500;
-            game.RESET = true;
-            game.RESTART = true;
-            game.PLAY = false;
-            game.TIMER = 0;
+            this.score.score(500);
+            this.tryNext();
         }
+    }
+
+    tryNext() {
+        game.round(true);
+        game.end(true);
+        game.pause();
+        game.current(0);
     }
 
     draw() {
         
-        this.screen.save();
-
-        this.screen.translate(
-            this.position.x + (this.width / 2),
-            this.position.y + (this.height / 2)
-        );
-        this.screen.rotate((this.direction * 90) * (Math.PI / 180));
-        this.screen.translate(
-            -this.position.x - (this.width / 2),
-            -this.position.y - (this.height / 2)
-        );
-        
         this.screen.drawImage(
-            this.image,
-            this.frameCount * this.image.height,
+            this.image[this.direction],
+            this.frameCount * this.image[this.direction].height,
             0,
-            this.image.width / this.frameLength,
-            this.image.height,
+            this.image[this.direction].width / this.frameLength,
+            this.image[this.direction].height,
             this.position.x + this.position.floor((this.width / 2) - ((this.width * this.scale) / 2)),
             this.position.y + this.position.floor((this.height / 2) - ((this.height * this.scale) / 2)),
             this.width * this.scale,
             this.height * this.scale
         );
-        
-        this.screen.restore();
     }
 }

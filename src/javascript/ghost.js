@@ -18,22 +18,41 @@ class Ghost{
      * @param {number} radarRadius 
      * @param {string} color 
      * @param {Gameboard} gameboard 
+     * @param {Power} power
      */
-    constructor(context, imageHealth, imageRetreat, imageInjured, position, direction, width, height, scale, speed, idleRoute, injured, radarRadius, color, gameboard) {
+    constructor(
+        context,
+        imageHealth,
+        imageRetreat,
+        imageInjured,
+        position,
+        direction,
+        width,
+        height,
+        scale,
+        speed,
+        idleRoute,
+        injured,
+        radarRadius,
+        color,
+        gameboard,
+        power
+    ) {
         this.screen = context;
         this.imageHealth = imageHealth;
         this.imageRetreat = imageRetreat;
         this.imageInjured = imageInjured;
         this.image = this.imageHealth;
         this.position = position;
-        this.nextPosition = new Vector(this.position.x, this.position.y);
-        this.delta = new Vector(0,0); // remove this
+        this.nextPosition = this.position.create();
+        this.delta = new Vector(0,0);
         this.width = width;
         this.height = height;
         this.direction = direction;
         this.speed = speed;
         this.color = color;
         this.gameboard = gameboard;
+        this.power = power;
         this.frameCount = 0;
         this.frameLength = 3;
         this.scale = scale;
@@ -88,8 +107,8 @@ class Ghost{
         if (this.delay.COUNT === this.delay.LENGTH)
             this.frameCount = this.frameCount === this.frameLength - 1 ? 0 : this.frameCount + 1;
 
-        if (this.checkCollision(pacmanCONFIG.position)) {
-            if (pacmanCONFIG.power.ON) {
+        if (this.checkCollision(pacmanSETTINGS.position)) {
+            if (this.power.is_bigfood_power()) {
                 this.injured.HURT = true;
                 this.injured.SAFE = false;
             }
@@ -157,7 +176,7 @@ class Ghost{
                 break;
         }
 
-        this.target = pacmanCONFIG.position;
+        this.target = pacmanSETTINGS.position;
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
@@ -165,7 +184,7 @@ class Ghost{
     }
 
     retreat() {
-        this.target = pacmanCONFIG.position;
+        this.target = pacmanSETTINGS.position;
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
@@ -215,25 +234,24 @@ class Ghost{
 
         this.nextPosition = this.position.convertFromGrid(this.#calcNextPATH(target));
 
-        let deltaROW = this.position.grid.floor().delta(this.nextPosition.grid).row;
-        let deltaCOLUMN = this.position.grid.floor().delta(this.nextPosition.grid).column;
+        let delta = this.position.grid.floor().delta(this.nextPosition.grid);
 
-        if (deltaROW > 0) this.direction = DIRECTION_DOWN;
-        if (deltaROW < 0) this.direction = DIRECTION_UP;
-        if (deltaCOLUMN > 0) this.direction = DIRECTION_RIGHT;
-        if (deltaCOLUMN < 0) this.direction = DIRECTION_LEFT;
+        if (delta.row > 0) this.direction = DIRECTION_DOWN;
+        if (delta.row < 0) this.direction = DIRECTION_UP;
+        if (delta.column > 0) this.direction = DIRECTION_RIGHT;
+        if (delta.column < 0) this.direction = DIRECTION_LEFT;
     }
 
     adjustPath() {
         if (this.position.grid.row >= 13 && this.position.gris.row < 16 &&
             this.position.grid.column >= 11 && this.position.grid.column < 17) {
-            this.changeDirection(new Vector(12 * this.position.blocksize, 13 * this.position.blocksize));
+            this.changeDirection(this.position.create(12 * this.position.blocksize, 13 * this.position.blocksize));
         }
 
     }
 
     isPossibleTurn(direction) {
-        let possibleDirection = new Grid(this.position.grid.row, this.position.grid.column);
+        let possibleDirection = this.position.grid.create();
 
         switch (direction) {
             case DIRECTION_UP:
@@ -266,11 +284,11 @@ class Ghost{
     }
 
     checkStatus() {
-        if (pacmanCONFIG.power.ON) {
-            this.status = this.radar(pacmanCONFIG.position) ? this.action.RETREAT : this.action.IDLE;
+        if (this.power.is_bigfood_power()) {
+            this.status = this.radar(pacmanSETTINGS.position) ? this.action.RETREAT : this.action.IDLE;
             this.image = this.imageRetreat;
         } else {
-            this.status = this.radar(pacmanCONFIG.position) ? this.action.ATTACK : this.action.IDLE;
+            this.status = this.radar(pacmanSETTINGS.position) ? this.action.ATTACK : this.action.IDLE;
             this.image = this.imageHealth;
             if (!this.injured.SAFE) this.injured.SAFE = true;
         }
@@ -283,7 +301,7 @@ class Ghost{
 
     #calcCOST(target) {
         
-        let angle = this.position.angle(pacmanCONFIG.position);
+        let angle = this.position.angle(pacmanSETTINGS.position);
         let weight = [
             [-6, 9], [-6, 8], [-6, 7],
             [-5, 8], [-5, 7], [-5, 6],
@@ -298,7 +316,7 @@ class Ghost{
             [4, 6], [4, 5],
             [5, 8], [5, 7], [5, 6],
             [6, 9], [6, 8], [6, 7],]
-            .map(point => (new Grid(point[0], point[1]).rotation(angle)).add(this.position.grid))
+            .map(point => (this.position.grid.create(point[0], point[1]).rotation(angle)).add(this.position.grid))
             .filter(point => this.gameboard.checkBounds(point))
             .map(point => point.id);
         
@@ -335,7 +353,7 @@ class Ghost{
 
             for (let neighbor of this.gameboard.neighbors(current.floor())) {
                 if (!Object.keys(source).includes(neighbor.id.toString())) {
-                    if (retreat && !this.#calcCOST(pacmanCONFIG.position).includes(neighbor.id)) {
+                    if (retreat && !this.#calcCOST(pacmanSETTINGS.position).includes(neighbor.id)) {
                         frontier.push(neighbor);
                         source[neighbor.id] = current;
 
@@ -368,11 +386,9 @@ class Ghost{
         let locationID = targetID;
         
         while (source[locationID]) {
-            path.push(source[locationID]);
+            path.splice(0, 0, source[locationID]);
             locationID = source[locationID] ? source[locationID].id : source[locationID];
         }
-
-        this.path = path.reverse();
         
         return path.length > 1 ? path[1] : path[0];
     }
