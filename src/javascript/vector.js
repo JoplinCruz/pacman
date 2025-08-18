@@ -9,6 +9,7 @@ class Vector {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this._direction = null;
         this.width = windowSize.width;
         this.height = windowSize.height;
         this.blocksize = blocksize;
@@ -35,7 +36,7 @@ class Vector {
      * @returns {Vector}
      */
     create(x, y) {
-        if (x && y) return new Vector(x, y);
+        if (typeof (x) === "number" && typeof (y) === "number") return new Vector(x, y);
         else return new Vector(this.x, this.y);
     }
 
@@ -102,6 +103,13 @@ class Vector {
     right(step) {
         this.x += step;
         this.gridUpdate();
+    }
+
+    direction(direction) {
+        if (typeof (direction) === "number")
+            this._direction = direction;
+        else
+            return this._direction;
     }
 
     /**

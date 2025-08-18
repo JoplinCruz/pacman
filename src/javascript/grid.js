@@ -69,7 +69,7 @@ class Grid {
      * @returns {Grid}
      */
     create(row, column) {
-        if (row && column) return new Grid(row, column);
+        if (typeof (row) === "number" && typeof (column) === "number") return new Grid(row, column);
         else return new Grid(this.row, this.column);
     }
 

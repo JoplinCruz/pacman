@@ -1,6 +1,13 @@
 
 class Ghost{
 
+    velocities = {
+        FREEZE: 0,
+        SLOW: parseInt(blocksize / 10),
+        NORMAL: parseInt(blocksize / 5),
+        INJURED: parseInt(blocksize / 2),
+    }
+
     /**
      * 
      * @param {HTMLCanvasElement} context 
@@ -161,26 +168,126 @@ class Ghost{
     }
     
     attack() {
+
+        this.target = pacmanSETTINGS.position;
+
+        /* inactive for now
         switch (this.color) {
             case ghostCOLOR.RED:
                 // console.log("red attack!");
                 break;
             case ghostCOLOR.CYAN:
                 // console.log("cyan attack!");
+                if (this.position.distance(this.target) > (6 * blocksize) &&
+                    ghostsSETTINGS[0].position.distance(pacmanSETTINGS.position) < this.radaRadius) // verify red ghost distance too.
+                    this.cyanAttack();
                 break;
             case ghostCOLOR.PINK:
                 // console.log("pink attack!");
+                if (this.position.distance(this.target) > (5 * blocksize))
+                    this.pinkAttack();
                 break;
             case ghostCOLOR.YELLOW:
                 // console.log("yellow attack!");
+                if (this.position.distance(this.target) > (5 * blocksize))
+                    this.yellowAttack();
                 break;
         }
-
-        this.target = pacmanSETTINGS.position;
+        */
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
         
+    }
+
+    cyanAttack() {
+
+        let angle = this.position.angle(ghostsSETTINGS[0].position, pacmanSETTINGS.position);
+        let direction = this.target.direction();
+        let retarget = null;
+
+        for (let jump = 5; jump >= 0; jump--){
+
+            let jumpTo = this.position.grid.create(0, jump);
+            jumpTo = jumpTo.rotation(angle).floor();
+
+            console.log("direction:", direction, "angle:", angle, "jump:", jump, jumpTo);
+            
+            jumpTo = this.position.convertFromGrid(this.target.grid.add(jumpTo));
+            
+            if (this.gameboard.collision(jumpTo.grid.floor()) !== this.gameboard.WALL &&
+                this.gameboard.collision(jumpTo.grid.floor()) !== this.gameboard.NULL)
+                break;
+            
+            retarget = jumpTo;
+
+            console.log(retarget);
+        }
+
+        this.target = retarget.create();
+        this.target.direction(direction);
+    }
+
+    pinkAttack() {
+
+        let direction = this.target.direction();
+        let retarget;
+
+        for (let jump = 0; jump <= 4; jump++) {
+            let row = 0, column = 0;
+
+            if (direction === DIRECTION_UP)
+                row = -jump;
+            if (direction === DIRECTION_DOWN)
+                row = jump;
+            if (direction === DIRECTION_RIGHT)
+                column = jump;
+            if (direction === DIRECTION_LEFT)
+                column = -jump;
+            
+            let jumpTo = this.position.convertFromGrid(this.target.grid.add(this.position.grid.create(row, column)).floor());
+            
+            if (this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.WALL &&
+                this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.NULL)
+                break;
+            
+            retarget = jumpTo;
+
+        }
+        this.target = retarget.create();
+        this.target.direction(direction);
+
+    }
+
+    yellowAttack() {
+
+        let direction = this.target.direction();
+        let retarget;
+
+        for (let jump = 0; jump <= 4; jump++) {
+            let row = 0, column = 0;
+
+            if (this.target.direction() === DIRECTION_UP)
+                row = jump;
+            if (this.target.direction() === DIRECTION_DOWN)
+                row = -jump;
+            if (this.target.direction() === DIRECTION_RIGHT)
+                column = -jump;
+            if (this.target.direction() === DIRECTION_LEFT)
+                column = jump;
+            
+            let jumpTo = this.position.convertFromGrid(this.target.grid.add(this.position.grid.create(row, column)).floor());
+            
+            if (this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.WALL &&
+                this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.NULL)
+                break;
+            
+            retarget = jumpTo;
+
+        }
+        this.target = retarget.create();
+        this.target.direction(direction);
+
     }
 
     retreat() {
@@ -229,8 +336,8 @@ class Ghost{
     }
 
     changeDirection(target) {
-        
-        this.speed = this.injured.HURT ? this.injured.SPEED : ghostSpeed;
+
+        this.checkSpeed();
 
         this.nextPosition = this.position.convertFromGrid(this.#calcNextPATH(target));
 
@@ -293,9 +400,36 @@ class Ghost{
             if (!this.injured.SAFE) this.injured.SAFE = true;
         }
 
+        if (this.power.is_cherry_power()) this.checkCherryPower();
+        
         if (!this.injured.SAFE || this.injured.HURT) {
             this.image = this.injured.HURT ? this.imageInjured : this.imageHealth;
             this.status = this.action.RECOVERY;
+        }
+    }
+
+    checkSpeed() {
+        
+        if (this.injured.HURT) {
+            this.speed = this.velocities.INJURED
+        } else if (this.power.is_cherry_power()) {
+            this.checkCherryPower();
+        } else {
+            this.speed = this.velocities.NORMAL
+        }
+    }
+    
+    checkCherryPower() {
+
+        switch (this.power.getCherryPower()) {
+            case this.power.cherry_power.FREEZE:
+                this.speed = this.velocities.FREEZE;
+                break;
+            case this.power.cherry_power.SPEED:
+                this.speed = this.velocities.SLOW;
+                break;
+            case this.power.cherry_power.INVISIBLE:
+                this.status = this.action.IDLE;
         }
     }
 

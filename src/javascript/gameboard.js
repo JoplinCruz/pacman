@@ -40,16 +40,6 @@ class Gameboard extends Grid{
         this.power = power;
         this.blocksize = blocksize;
         this.fps = fps;
-        // this.cherry = {
-        //     ON: false,
-        //     COUNT: 3,
-        //     COORDINATE: new Grid(17, 13),
-        //     ICON: cherryIconIMG,
-        //     WAKEUP: 0,
-        //     SLEEP: 0,
-        //     SELECTION: Object.keys(this.cherryPOWER),
-        //     POWER: null,
-        // };
         this.message = "READY!";
         this.defaults();
     }
@@ -57,24 +47,12 @@ class Gameboard extends Grid{
     defaults() {
         this.default = {
             grid: this.grid.map(row => [...row]),
-            // cherry: {
-            //     ON: this.cherry.ON,
-            //     COUNT: this.cherry.COUNT,
-            //     COORDINATE: this.cherry.COORDINATE,
-            //     ICON: this.cherry.ICON,
-            //     WAKEUP: this.cherry.WAKEUP,
-            //     SLEEP: this.cherry.SLEEP,
-            //     SELECTION: [...this.cherry.SELECTION],
-            //     POWER: this.cherry.POWER,
-            // },
             message: this.message,
         }
     }
 
     reset() {
         this.grid = this.default.grid.map(row => [...row]);
-        // this.cherry.COUNT = this.default.cherry.COUNT;
-        // this.cherry.SELECTION = this.default.cherry.SELECTION;
         this.message = this.default.message;
     }
 
@@ -113,7 +91,7 @@ class Gameboard extends Grid{
      * @returns {number}
      */
     collision(coordinate) {
-        return this.grid[coordinate.row][coordinate.column];
+        return this.checkBounds(coordinate) ? this.grid[coordinate.row][coordinate.column] : this.NULL;
     }
 
     /**
@@ -319,9 +297,9 @@ class Gameboard extends Grid{
 
                 if (pivot === this.CHERRY) {
                     this.screen.drawImage(
-                        this.cherry.ICON,
-                        this.cherry.COORDINATE.column * this.blocksize,
-                        this.cherry.COORDINATE.row * this.blocksize,
+                        this.power.getCherryIcon(),
+                        this.power.getCherryPosition().multiply(this.blocksize).column,
+                        this.power.getCherryPosition().multiply(this.blocksize).row,
                         this.blocksize,
                         this.blocksize
                     )

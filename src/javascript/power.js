@@ -167,6 +167,13 @@ class Power {
         return this.#super.cherry.on;
     }
 
+    getHeroPower() {
+        if (this.is_cherry_power())
+            return this.#super.hero.cherry.power
+        else
+            return null
+    }
+
     getCherryPower() {
         return this.cherry_power[this.#super.cherry.power];
     }

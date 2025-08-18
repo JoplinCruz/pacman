@@ -3,6 +3,10 @@ const pacmanImageRIGHT = document.getElementById("pacman-right");
 const pacmanImageLEFT = document.getElementById("pacman-left");
 const pacmanImageUP = document.getElementById("pacman-up");
 const pacmanImageDOWN = document.getElementById("pacman-down");
+const pacmanImageInvisibleRIGHT = document.getElementById("pacman-invisible-right");
+const pacmanImageInvisibleLEFT = document.getElementById("pacman-invisible-left");
+const pacmanImageInvisibleUP = document.getElementById("pacman-invisible-up");
+const pacmanImageInvisibleDOWN = document.getElementById("pacman-invisible-down");
 const ghostRedIMG = document.getElementById("ghost-red");
 const ghostCyanIMG = document.getElementById("ghost-cyan");
 const ghostPinkIMG = document.getElementById("ghost-pink");
@@ -136,15 +140,12 @@ const pacmanSETTINGS = {
     speed: Math.floor(blocksize / 4),
     position: new Vector((13 * blocksize) + (2 * pacmanSpeed), 23 * blocksize),
     score: score,
-    power: { ON: false, TIMER: 0 },                                 // change to power object
     live: { LIFE: 3, DEATH: 0 },
-    cherry: { ON: false, POWER: 0, COUNTDOWN: 30, COUNTER: 0 },     // remove this after
 };
 
 canvas.width = windowSize.width;
 canvas.height = windowSize.height;
 
-// insert power object into gameboard parameter
 const gameboard = new Gameboard(
     canvas,
     screen,
@@ -157,10 +158,22 @@ const gameboard = new Gameboard(
     fps,
 );
 
-// insert power object into pacman parameters
 const pacman = new Pacman(
     screen,
-    [pacmanImageRIGHT, pacmanImageDOWN, pacmanImageLEFT, pacmanImageUP],
+    {
+        visible: [
+            pacmanImageRIGHT,
+            pacmanImageDOWN,
+            pacmanImageLEFT,
+            pacmanImageUP
+        ],
+        invisible: [
+            pacmanImageInvisibleRIGHT,
+            pacmanImageInvisibleDOWN,
+            pacmanImageInvisibleLEFT,
+            pacmanImageInvisibleUP
+        ],
+    },
     pacmanSETTINGS.position,
     blocksize,
     blocksize,
@@ -173,7 +186,6 @@ const pacman = new Pacman(
     pacmanSETTINGS.cherry,
 );
 
-// insert the power object into ghost parameters too
 const ghosts = [];
 for (let soul of ghostsSETTINGS){
     let ghost = new Ghost(
@@ -198,18 +210,6 @@ for (let soul of ghostsSETTINGS){
 
 function runtime() {
 
-    /** remove this block after  --------------------------------------------------------v */
-    // if (pacmanSETTINGS.power.ON) {
-    //     pacmanSETTINGS.power.TIMER--;
-    //     pacmanSETTINGS.power.ON = pacmanSETTINGS.power.TIMER <= 0 ? false : pacmanSETTINGS.power.ON;
-    // }
-    
-    // if (pacmanSETTINGS.cherry.ON) {
-    //     pacmanSETTINGS.cherry.COUNTDOWN--;
-    //     pacmanSETTINGS.cherry.ON = pacmanSETTINGS.cherry.COUNTDOWN <= 0 ? false : pacmanSETTINGS.ON;
-    // }
-    /** remove this block after  --------------------------------------------------------^ */
-
     // gameboard.setMessage("Are you Ready?");
     
     if (game.is_playing()) {
@@ -230,8 +230,8 @@ function runtime() {
     if (game.round()) {
         score.save();
         pacman.reset();
-        // gameboard.setCherryStartup();   // remove this after
         power.cleanCherrySettings();
+        gameboard.fill(power.getCherryPosition(), gameboard.SPACE);
         for (let ghost of ghosts) ghost.reset();
         game.round(false);
     }
@@ -239,7 +239,7 @@ function runtime() {
     if (game.end()) {
         power.reset()
         gameboard.setDisplayMessage(true);
-        gameboard.reset();              // remove cherry from this object
+        gameboard.reset();
         game.end(false);
     }
 }
