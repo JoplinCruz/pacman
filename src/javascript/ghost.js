@@ -7,6 +7,7 @@ class Ghost{
         NORMAL: parseInt(blocksize / 5),
         INJURED: parseInt(blocksize / 2),
     }
+    strategy = false;
 
     /**
      * 
@@ -163,37 +164,35 @@ class Ghost{
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
-        // else
-        //     this.adjustPath();
     }
     
     attack() {
 
         this.target = pacmanSETTINGS.position;
 
-        /* inactive for now
-        switch (this.color) {
-            case ghostCOLOR.RED:
-                // console.log("red attack!");
-                break;
-            case ghostCOLOR.CYAN:
-                // console.log("cyan attack!");
-                if (this.position.distance(this.target) > (6 * blocksize) &&
-                    ghostsSETTINGS[0].position.distance(pacmanSETTINGS.position) < this.radaRadius) // verify red ghost distance too.
-                    this.cyanAttack();
-                break;
-            case ghostCOLOR.PINK:
-                // console.log("pink attack!");
-                if (this.position.distance(this.target) > (5 * blocksize))
-                    this.pinkAttack();
-                break;
-            case ghostCOLOR.YELLOW:
-                // console.log("yellow attack!");
-                if (this.position.distance(this.target) > (5 * blocksize))
-                    this.yellowAttack();
-                break;
+        if (this.strategy) {
+            switch (this.color) {
+                case ghostCOLOR.RED:
+                    // red attack!
+                    break;
+                case ghostCOLOR.CYAN:
+                    // cyan attack!
+                    if (this.position.distance(this.target) > (6 * blocksize) &&
+                        ghostsSETTINGS[0].position.distance(pacmanSETTINGS.position) < this.radaRadius)
+                        this.cyanAttack();
+                    break;
+                case ghostCOLOR.PINK:
+                    // pink attack!
+                    if (this.position.distance(this.target) > (5 * blocksize))
+                        this.pinkAttack();
+                    break;
+                case ghostCOLOR.YELLOW:
+                    // yellow attack!
+                    if (this.position.distance(this.target) > (5 * blocksize))
+                        this.yellowAttack();
+                    break;
+            }
         }
-        */
 
         if (this.position.checkGrid())
             this.changeDirection(this.target);
@@ -204,33 +203,31 @@ class Ghost{
 
         let angle = this.position.angle(ghostsSETTINGS[0].position, pacmanSETTINGS.position);
         let direction = this.target.direction();
+        let [targetRow, targetColumn] = this.target.grid.show();
         let retarget = null;
 
         for (let jump = 5; jump >= 0; jump--){
 
-            let jumpTo = this.position.grid.create(0, jump);
-            jumpTo = jumpTo.rotation(angle).floor();
+            let rotationGrid = this.position.grid.create(0, jump).rotation(angle).floor();
 
-            console.log("direction:", direction, "angle:", angle, "jump:", jump, jumpTo);
-            
-            jumpTo = this.position.convertFromGrid(this.target.grid.add(jumpTo));
+            let grid = this.position.grid.create(targetRow + rotationGrid.row, targetColumn + rotationGrid.column);
+            let jumpTo = this.position.convertFromGrid(grid);
             
             if (this.gameboard.collision(jumpTo.grid.floor()) !== this.gameboard.WALL &&
-                this.gameboard.collision(jumpTo.grid.floor()) !== this.gameboard.NULL)
+                typeof (this.gameboard.collision(jumpTo.grid.floor())) !== "number")
                 break;
             
             retarget = jumpTo;
-
-            console.log(retarget);
         }
 
-        this.target = retarget.create();
+        this.target = retarget ? retarget.create() : this.target;
         this.target.direction(direction);
     }
 
     pinkAttack() {
 
         let direction = this.target.direction();
+        let [targetRow, targetColumn] = this.target.grid.show();
         let retarget;
 
         for (let jump = 0; jump <= 4; jump++) {
@@ -245,10 +242,11 @@ class Ghost{
             if (direction === DIRECTION_LEFT)
                 column = -jump;
             
-            let jumpTo = this.position.convertFromGrid(this.target.grid.add(this.position.grid.create(row, column)).floor());
+            let grid = this.position.grid.create(targetRow + row, targetColumn + column);
+            let jumpTo = this.position.convertFromGrid(grid);
             
             if (this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.WALL &&
-                this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.NULL)
+                typeof (this.gameboard.collision(jumpTo.grid.floor())) !== "number")
                 break;
             
             retarget = jumpTo;
@@ -262,24 +260,26 @@ class Ghost{
     yellowAttack() {
 
         let direction = this.target.direction();
+        let [targetRow, targetColumn] = this.target.grid.show();
         let retarget;
 
         for (let jump = 0; jump <= 4; jump++) {
             let row = 0, column = 0;
 
-            if (this.target.direction() === DIRECTION_UP)
+            if (direction === DIRECTION_UP)
                 row = jump;
-            if (this.target.direction() === DIRECTION_DOWN)
+            if (direction === DIRECTION_DOWN)
                 row = -jump;
-            if (this.target.direction() === DIRECTION_RIGHT)
+            if (direction === DIRECTION_RIGHT)
                 column = -jump;
-            if (this.target.direction() === DIRECTION_LEFT)
+            if (direction === DIRECTION_LEFT)
                 column = jump;
             
-            let jumpTo = this.position.convertFromGrid(this.target.grid.add(this.position.grid.create(row, column)).floor());
+            let grid = this.position.grid.create(targetRow + row, targetColumn + column);
+            let jumpTo = this.position.convertFromGrid(grid);
             
             if (this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.WALL &&
-                this.gameboard.collision(jumpTo.grid.floor()) === this.gameboard.NULL)
+                typeof (this.gameboard.collision(jumpTo.grid.floor())) !== "number")
                 break;
             
             retarget = jumpTo;
@@ -347,33 +347,6 @@ class Ghost{
         if (delta.row < 0) this.direction = DIRECTION_UP;
         if (delta.column > 0) this.direction = DIRECTION_RIGHT;
         if (delta.column < 0) this.direction = DIRECTION_LEFT;
-    }
-
-    adjustPath() {
-        if (this.position.grid.row >= 13 && this.position.gris.row < 16 &&
-            this.position.grid.column >= 11 && this.position.grid.column < 17) {
-            this.changeDirection(this.position.create(12 * this.position.blocksize, 13 * this.position.blocksize));
-        }
-
-    }
-
-    isPossibleTurn(direction) {
-        let possibleDirection = this.position.grid.create();
-
-        switch (direction) {
-            case DIRECTION_UP:
-                possibleDirection.up();
-                return !this.gameboard.collision(possibleDirection);
-            case DIRECTION_DOWN:
-                possibleDirection.down();
-                return !this.gameboard.collision(possibleDirection);
-            case DIRECTION_RIGHT:
-                possibleDirection.right();
-                return !this.gameboard.collision(possibleDirection);
-            case DIRECTION_LEFT:
-                possibleDirection.down();
-                return !this.gameboard.collision(possibleDirection);
-        }
     }
 
     /**
